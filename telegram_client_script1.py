@@ -16,7 +16,7 @@ api_hash = str(config['Telegram']['api_hash'])
 phone = config['Telegram']['phone']
 username = config['Telegram']['username']
 
-chat_id = config['channels']['Conscious_Freiburg']
+chat_id = int(config['Channels']['Ecstatic_Dance'])
 
 # Create a client object with your credentials
 client = TelegramClient(username, api_id, api_hash)
@@ -31,6 +31,15 @@ async def get_messages():
     print("id ", me.id)
     print("phone ", me.phone)
 
+    # print contact details
+    dialogs = await client.get_dialogs()
+    for dialog in dialogs:
+        if 'dance'.lower() in dialog.name.lower():
+            print(f"{dialog.name}, {dialog.id}") 
+        # if dialog.entity.phone:
+        #     print("\tphone: ", dialog.entity.phone)
+    
+    
     group_entity = await client.get_input_entity(chat_id)
     print("channel: ", group_entity.stringify())
     connection_status = client.is_connected()
@@ -47,7 +56,7 @@ async def get_messages():
     # Loop through the messages
     for counter,message in enumerate(messages):
         # Check if the message is text
-        print("message number: ", counter)
+        print("\nmessage number: ", counter)
 
         if message.text:
             # Print the message text
