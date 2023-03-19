@@ -5,8 +5,6 @@ import spacy
 from datetime import datetime
 import json
 
-# Load spacy model for English
-nlp = spacy.load("de_core_news_sm")
 
 # Reading Configs
 config = configparser.ConfigParser()
@@ -58,7 +56,7 @@ async def get_messages():
 
     ## Save the messages to a json file
     messages_dict = [message.to_dict() for message in messages]
-    with open(f'telegram_messages_{channel}_{datetime.date(datetime.now())}.json', 'w') as f:
+    with open('telegram_messages.json', 'w') as f: #{channel}_{datetime.date(datetime.now())}
         json.dump(messages_dict, f, indent=4, sort_keys=True, default=str)
 
                     
