@@ -14,7 +14,8 @@ dates = [
     '26. Juni 22', '27-07-22', '28. August 2022', '29/09/2022', '30. November 2022',
     '31/12/2022', '31. Januar 2022'
 ]
-
+with open('deutsche_Geschichte.txt', 'r', encoding='utf-8') as f:
+    text = f.read()
 
 # Example patterns to match
 patterns = [
@@ -27,19 +28,24 @@ patterns = [
     # "Mon DD, YY(YY)"
     "(Jan|Feb|März|Apr|Mai|Jun|Jul|Aug|Sept|Okt|Nov|Dez)[a-z]*[.-/\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?",
     # Finally he went crazy (and tried to combine all the patterns)
-    "(?:[1-9]|[12][0-9]|3[01][.-\s])?(?:Jan(?:uar)?|Feb(?:ruar)?|März|Mar(?:ch)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|Aug(?:ust)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[.-\s](?:[1-9]|[12][0-9]|3[01][.-\s])?(?:\d{2}\d{2})?(?:\d{2})?"
+    "(?:[1-9]|[12][0-9]|3[01][.-\s])?(?:Jan(?:uar)?|Feb(?:ruar)?|März|Mar(?:ch)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|Aug(?:ust)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[.-\s](?:[1-9]|[12][0-9]|3[01][.-\s])?(?:\d{2}\d{2})?(?:\d{2})?",
+    # Maybe this grew even longer
+    "(?i)\b(\d{1,2}[.-/\s]\d{1,2}[.-/\s]\d{2}(\d{2})?|\d{1,2}[.-/\s]?[.-/\s]?(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[.-/\s]?(\d{2})?(\d{2})?|(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[.-/\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?)\b",
+
+    "(?<!\d)(?:[1-9]|[12]\d|3[01])[.-/\s](?:Jan(?:uar)?|Feb(?:ruar)?|März|Ma[iy]|Jun|iul|Aug|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[a-z]*[.-/\s](?:\d{4}|\d{2})(?!\d)"
 ]
 
 # Search for similar strings to each pattern in the list of strings
 matches = {}
 for pattern in patterns:
-    results = process.extract(pattern, dates, limit=None)
+    results = process.extract(pattern, text[0:5000], limit=None)
     for result, score in results:
         if result in matches:
             if score > matches[result]:
                 matches[result] = score
         else:
             matches[result] = score
-print("dates: ", len(dates))
-print("matches: ", len(matches))
+#print("dates: ", len(dates))
+
 print(matches)
+print("len(matches): ", len(matches))
