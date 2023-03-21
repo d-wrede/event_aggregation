@@ -1,4 +1,6 @@
 from fuzzywuzzy import process
+import json
+import re
 
 # Example list of strings to search
 dates = [
@@ -14,38 +16,69 @@ dates = [
     '26. Juni 22', '27-07-22', '28. August 2022', '29/09/2022', '30. November 2022',
     '31/12/2022', '31. Januar 2022'
 ]
-with open('deutsche_Geschichte.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
+# with open('deutsche_Geschichte.txt', 'r', encoding='utf-8') as f:
+#     text = f.read()
+  
+# Opening JSON file as dict
+with open('telegram_messages.json', 'r', encoding='utf-8') as f:
+    messages = json.load(f)
 
 # Example patterns to match
 patterns = [
     # "DD-MM-YYYY" or "DD.MM.YYYY" or "DD MM YYYY" or  -- "DD/MM/YYYY"
-    "[1-9]|[12][0-9]|3[01][.-/\s][1-9]|[12][0-9]|3[01][.-/\s]([19]|[20])?(\d{2})?",
+    #r"[1-9]|[12][0-9]|3[01][-.\s][1-9]|[12][0-9]|3[01][-.\s]([19]|[20])?(\d{2})?",
     # "DD. Monat YYYY" or "DD. Monat YY"
-    "[1-9]|[12][0-9]|3[01]?[.-/\s]?[.-/\s]?(Jan|Feb|März|Apr|Mai|Jun|Jul|Aug|Sept|Okt|Nov|Dez)[a-z]*[.-/\s]?(\d{2})?(\d{2})?",
+    #r"(?:J(anuar|u(n|li))|Februar|Mä(rz|i)|A(pril|ugust)|(((Sept|Nov|Dez)em)|Okto)ber)",
+    # regex structured with groups
+    r"\b(0?[1-9]|[1-2][0-9]|3[01])?[-.\s/]*(Jan|Feb|März|Maerz|April|Ma[iy]|Jun|Jul|Aug|Sep|Okt|Nov|Dez)[a-z]*[-.\s/]*(20)?(2[2-5])?\b",
+    r"\b(0?[1-9]|[1-2][0-9]|3[01])[-.\s/]+0?([1-9]|1[0-2])[-.\s/]+(20)?(2[2-5])?\b"
+    
     # "Monat, YYYY" or "Monat, YY"
     #"(Jan|Feb|März|Apr|Mai|Jun|Jul|Aug|Sept|Okt|Nov|Dez)[a-z]*[\s]?\d{2}(\d{2})?",
     # "Mon DD, YY(YY)"
-    "(Jan|Feb|März|Apr|Mai|Jun|Jul|Aug|Sept|Okt|Nov|Dez)[a-z]*[.-/\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?",
+    #r"(Jan|Feb|März|Apr|Mai|Jun|Jul|Aug|Sept|Okt|Nov|Dez)[a-z]*[-.\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?",
     # Finally he went crazy (and tried to combine all the patterns)
-    "(?:[1-9]|[12][0-9]|3[01][.-\s])?(?:Jan(?:uar)?|Feb(?:ruar)?|März|Mar(?:ch)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|Aug(?:ust)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[.-\s](?:[1-9]|[12][0-9]|3[01][.-\s])?(?:\d{2}\d{2})?(?:\d{2})?",
+    #r"(?:[1-9]|[12][0-9]|3[01][-.\s])?(?:Jan(?:uar)?|Feb(?:ruar)?|März|Mar(?:ch)?|Apr(?:il)?|Mai|Jun(?:i)?|Jul(?:i)?|Aug(?:ust)?|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[-.\s](?:[1-9]|[12][0-9]|3[01][-.\s])?(?:\d{2}\d{2})?(?:\d{2})?",
     # Maybe this grew even longer
-    "(?i)\b(\d{1,2}[.-/\s]\d{1,2}[.-/\s]\d{2}(\d{2})?|\d{1,2}[.-/\s]?[.-/\s]?(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[.-/\s]?(\d{2})?(\d{2})?|(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[.-/\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?)\b",
+    #r"\b(\d{1,2}[-.\s]\d{1,2}[-.\s]\d{2}(\d{2})?|\d{1,2}[-.\s]?[-.\s]?(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[-.\s]?(\d{2})?(\d{2})?|(jan|feb|märz|apr|mai|jun|jul|aug|sept|okt|nov|dez)[a-z]*[-.\s]?((0?[1-9])|[12][0-9]|3[01])?[.,/\s][\s]?(\d{2})?(\d{2})?)\b",
 
-    "(?<!\d)(?:[1-9]|[12]\d|3[01])[.-/\s](?:Jan(?:uar)?|Feb(?:ruar)?|März|Ma[iy]|Jun|iul|Aug|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[a-z]*[.-/\s](?:\d{4}|\d{2})(?!\d)"
+    #r"(?<!\d)(?:[1-9]|[12]\d|3[01])[-.\s](?:Jan(?:uar)?|Feb(?:ruar)?|März|Ma[iy]|Jun|iul|Aug|Sep(?:tember)?|Okt(?:ober)?|Nov(?:ember)?|Dez(?:ember)?)[a-z]*[-.\s](?:\d{4}|\d{2})(?!\d)"
 ]
+# Compile your patterns with the re.IGNORECASE flag
+#compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
+# join all patterns into one big pattern using | operator
+# pattern = "|".join(patterns) [('18', '3', '', '', '')]
 
-# Search for similar strings to each pattern in the list of strings
-matches = {}
-for pattern in patterns:
-    results = process.extract(pattern, text[0:5000], limit=None)
-    for result, score in results:
-        if result in matches:
-            if score > matches[result]:
-                matches[result] = score
-        else:
-            matches[result] = score
-#print("dates: ", len(dates))
+for message in messages:
+    dateset = set()
+    print("message: ", message['message'][0:100])
 
-print(matches)
-print("len(matches): ", len(matches))
+    for i, pattern in enumerate(patterns):
+        dates = re.findall(pattern, message['message'], flags=re.IGNORECASE)
+        # if the dates are not in the set, add them
+        #print(f"dates related to pattern {i}: \n{dates}\n")
+        for date in dates:
+            day = date[0]
+            month = date[1]
+            year = date[3]
+            print(f"Day: {day}, Month: {month}, Year: {'20' + year if len(year) else ''}")
+        for date in dates:
+            dateset.add(date)
+    #print("len(dateset): ", len(dateset))
+    #print("dateset: ", dateset)
+
+    
+    # Find best matches using fuzzywuzzy
+    # matches = {}
+    # for date in dateset:
+    #     results = process.extract(pattern, date, limit=None)
+    #     for result, score in results:
+    #         if result in matches:
+    #             if score > matches[result]:
+    #                 matches[result] = score
+    #         else:
+    #             matches[result] = score
+    
+    # print("dateset based on findall: ", dateset)
+    # print("matches: ", matches)
+    # print("len(matches): ", len(matches))
