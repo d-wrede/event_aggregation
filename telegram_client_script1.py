@@ -15,7 +15,7 @@ api_id = config['Telegram']['api_id']
 api_hash = str(config['Telegram']['api_hash'])
 phone = config['Telegram']['phone']
 username = config['Telegram']['username']
-channel = 'Ecstatic_Dance'
+channel = 'Conscious_Freiburg' #'Ecstatic_Dance'
 chat_id = int(config['Channels'][channel])
 
 # Create a client object with your credentials
@@ -44,9 +44,25 @@ async def get_messages():
     connection_status = client.is_connected()
     print("connection_status: ", connection_status)
 
-    messages = await client.get_messages(group_entity, limit = 10)
-    print("type(messages): ", type(messages))
-    print("type(message): ", type(messages[0]))
+    messages = await client.get_messages(group_entity, limit = 50)
+    authors = [None]*len(messages)
+
+    # get sender names
+    for i, message in enumerate(messages):
+        # get user_id from message
+        user_id = message.from_id.user_id
+        # Get the User entity associated with the user ID
+        user_entity = await client.get_entity(user_id)
+
+        # Get the first name and last name of the user
+        first_name = user_entity.first_name
+        last_name = user_entity.last_name
+        authors[i] = {'first_name': first_name, 'last_name': last_name}
+
+    # Get the Channel entity associated with the chat-/channel ID
+    channel_entity = await client.get_entity(chat_id)
+    # Get the name of the channel
+    channel_name = channel_entity.title    
 
     # print contact details
     dialogs = await client.get_dialogs()
@@ -54,10 +70,15 @@ async def get_messages():
         if dialog.id == chat_id:
             print(f"{dialog.name}, {dialog.id}")
 
-    ## Save the messages to a json file
-    messages_dict = [message.to_dict() for message in messages]
-    with open('telegram_messages.json', 'w') as f: #{channel}_{datetime.date(datetime.now())}
-        json.dump(messages_dict, f, indent=4, sort_keys=True, default=str)
+
+    messages_list = [message.to_dict() for message in messages]
+    # add authors and channel name to messages
+    for message, author in zip(messages_list, authors):
+        message['from_id'].update(author)
+        message['channel_name'] = channel_name
+    # save messages to json file
+    with open('telegram_messages.json', 'w', encoding='utf-8') as f:
+        json.dump(messages_list, f, indent=4, sort_keys=True, default=str)
 
                     
 # Run the async function using asyncio.run()
