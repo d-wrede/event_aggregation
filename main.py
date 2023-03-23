@@ -10,7 +10,7 @@ def main():
     for message in messages:
         if 'message' in message:
             timestamps = extract_timestamp(message['message'])
-            print(message['message'][0:70])
+            print(message['message'][0:200])
             print(timestamps, '\n')
     
     # further terms to be extracted:

@@ -15,7 +15,7 @@ api_id = config['Telegram']['api_id']
 api_hash = str(config['Telegram']['api_hash'])
 phone = config['Telegram']['phone']
 username = config['Telegram']['username']
-channel = 'Conscious_Freiburg' #'Ecstatic_Dance'
+channel = 'Ecstatic_Dance'
 chat_id = int(config['Channels'][channel])
 
 # Create a client object with your credentials
