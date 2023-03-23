@@ -2,10 +2,6 @@
 import asyncio
 import configparser
 from telethon import TelegramClient
-import spacy
-from datetime import datetime
-import json
-from datetime import datetime
 import json
 
 # channel search term
@@ -36,7 +32,7 @@ async def get_messages():
     me = await client.get_me()
     print(f"{me.first_name} {me.last_name}")
     print("id ", me.id)
-    print("phone ++", me.phone)
+    print("phone +", me.phone)
 
     # print contact details
     dialogs = await client.get_dialogs()
@@ -97,7 +93,7 @@ async def get_messages():
             new_messages_list += [msg for msg in messages_list if msg['id']
                                   not in messages_id_set]
     except:
-        pass
+        new_messages_list = messages_list
 
     # save messages to json file
     with open(json_filename, 'w', encoding='utf-8') as f:
