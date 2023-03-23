@@ -4,7 +4,12 @@ from telethon import TelegramClient
 import spacy
 from datetime import datetime
 import json
+from datetime import datetime
+import json
 
+# channel search term
+search_term = 'dance'
+json_filename = 'telegram_messages.json'
 
 # Reading Configs
 config = configparser.ConfigParser()
@@ -15,6 +20,8 @@ api_id = config['Telegram']['api_id']
 api_hash = str(config['Telegram']['api_hash'])
 phone = config['Telegram']['phone']
 username = config['Telegram']['username']
+channel = 'Ecstatic_Dance'
+chat_id = int(config['Channels'][channel])
 channel = 'Ecstatic_Dance'
 chat_id = int(config['Channels'][channel])
 
@@ -28,13 +35,16 @@ async def get_messages():
     me = await client.get_me()
     print(f"{me.first_name} {me.last_name}")
     print("id ", me.id)
-    print("phone +", me.phone)
+    print("phone ++", me.phone)
 
     # print contact details
     dialogs = await client.get_dialogs()
     for dialog in dialogs:
-        if 'dance'.lower() in dialog.name.lower():
+        if search_term.lower() in dialog.name.lower():
             print(f"{dialog.name}, {dialog.id}") 
+            # print phone number, if available    
+            if hasattr(dialog.entity, 'phone'):
+                print("\tphone: +", dialog.entity.phone)
             # print phone number, if available    
             if hasattr(dialog.entity, 'phone'):
                 print("\tphone: +", dialog.entity.phone)
