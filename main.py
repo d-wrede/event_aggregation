@@ -6,7 +6,9 @@ def main():
     # Opening messages file
     with open('telegram_messages.json', 'r', encoding='utf-8') as f:
         messages = json.load(f)
-    
+
+
+    # timestamp extraction
     for message in messages:
         if 'message' in message:
             timestamps = extract_timestamp(message['message'])
