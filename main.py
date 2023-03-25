@@ -35,7 +35,7 @@ def main():
 
     with open('file.txt', 'w', encoding='utf-8') as f:
         for message in messages:
-            if 'message' in message:
+            if 'message' in message and message['message'] != '':
                 f.write('startstamp: ' +
                         str(message['timestamps']['startstamp']) + '\n')
                 f.write('endstamp: ' +
