@@ -12,7 +12,7 @@ def main():
     count_dates = 0
     # timestamp extraction
     for message in messages:
-        if 'message' in message:
+        if 'message' in message and message['message'] != '':
             timestamps = extract_timestamp(message['message'])
             # print(message['message'][0:200])
             # print(timestamps, '\n')
