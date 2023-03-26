@@ -13,7 +13,7 @@ def main():
     count_messages = 0
     # timestamp extraction
     for message in messages:
-        if 'message' in message and message['message'] != '':# and 'approved' not in message['timestamps']['comment']:
+        if 'message' in message and message['message'] != '' and 'approved' not in message['timestamps']['comment']:
             count_messages += 1
             timestamps = extract_timestamp(message['message'])
             # print(message['message'][0:200])
@@ -26,8 +26,8 @@ def main():
             if timestamps[0] is not None:
                 count_dates += 1
 
-        # if count_messages == 5:
-        #     break
+        if count_messages == 1:
+            break
 
     # sort messages by timestamp
     messages.sort(key=lambda x: str(
