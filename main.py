@@ -15,8 +15,8 @@ def main():
         if 'message' in message and message['message'] != '':
             timestamps = extract_timestamp(message['message'])
             # print(message['message'][0:200])
-            # print(timestamps, '\n')
-            # add timestamps to message
+            print("timestamps: ", timestamps, '\n')
+            # add timestamps to message dict
             message.setdefault('timestamps', {})
             message['timestamps']['startstamp'] = timestamps[0]
             message['timestamps']['endstamp'] = timestamps[1]
