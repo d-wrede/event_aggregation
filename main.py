@@ -11,8 +11,8 @@ def main():
 
     count_dates = 0
     # timestamp extraction
-    for message in messages:
-        if 'message' in message and message['message'] != '':
+    for message in messages[:4]:
+        if 'message' in message and message['message'] != '': # and comment != 'okay':
             timestamps = extract_timestamp(message['message'])
             # print(message['message'][0:200])
             print("timestamps: ", timestamps, '\n')
@@ -23,10 +23,12 @@ def main():
             message['timestamps']['comment'] = timestamps[2]
             if timestamps[0] is not None:
                 count_dates += 1
-    
-    # sort messages by timestamp
-    messages.sort(key=lambda x: str(x.get('timestamps', {}).get('startstamp', '')))
+        else:
+            print("message id: ", message['id'])
 
+    # sort messages by timestamp
+    messages.sort(key=lambda x: str(
+        x.get('timestamps', {}).get('startstamp', float('inf'))))
 
     print(f'found {count_dates} dates in {len(messages)} messages')
     # save messages with timestamps
@@ -50,7 +52,6 @@ def main():
     # - place
     # - category
     # - URL
-
 
 
 if __name__ == "__main__":
