@@ -3,11 +3,66 @@ from src.extract_timestamp import extract_timestamp, filter_string
 import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
+import re
 
 json_filename = '/Users/danielwrede/Documents/read_event_messages/telegram_messages.json' #'telegram_messages.json'
 
 
 def main():
+
+    def match_patterns(blackregexlist, string):
+        for blackregex in blackregexlist:
+            if re.search(blackregex, string, flags=re.IGNORECASE):
+                return True
+        return False
+    
+    # blacklist for parsedstamps
+    blacklist = ['mit', 'in die', 'in die', 'und die', 'so', 'die', '40',
+                 '2-3', '1,5', 'jahren', 'und mit', 'mit einem', '18', '14€/12€', '10€/8€', '15€ / 20€', '0163', '60€', '6 mit', '12-22']
+    blackregexlist = [r'^\d{2}$', r'^\d{1,2}-\d{1,2}$',
+                      r'^\d{1,2}€[/-]\d{2}€', r'^\d{1-3}$', r'(€|Euro)']
+
+    def check_timestamps(timestamps, parsedstamps, blacklist=blacklist, blackregexlist=blackregexlist):
+        """Check if parsedstamps are in timestamps, on the blacklist or blackregexlist. If not print them."""
+        if timestamps is not None and parsedstamps is not None:
+            switch_message = False
+            for stamp in parsedstamps:
+                # generate date and time tuples for comparison
+                tups_ts = tuple(dt.strftime(
+                    '%Y-%m-%d') if dt is not None else None for dt in timestamps[:-1])
+                tups_time = tuple(dt.strftime(
+                    '%H:%M') if dt is not None else None for dt in timestamps[:-1])
+
+                if match_patterns(blackregexlist, stamp[0]):
+                    continue
+                if stamp[1].strftime('%Y-%m-%d') in tups_ts:
+                    continue
+                if stamp[1].year > 2025:
+                    continue
+                if min(timestamps[:-1]) < stamp[1] < max(timestamps[:-1]):
+                    continue
+                if min(tups_ts) < stamp[1].strftime('%Y-%m-%d') < max(tups_ts):
+                    continue
+                if min(tups_time) < stamp[1].strftime('%H:%M') < max(tups_time):
+                    continue
+                if stamp[0].lower() in blacklist:
+                    continue    
+                if stamp[1].strftime('%H:%M') in tups_time: 
+                    continue
+                if stamp[0].lower() in blacklist:
+                    continue
+
+                # if stamp[1].strftime('%Y-%m-%d') == '2023-03-31' or stamp[0] == '31.3.23':
+                #     print("tup_ts: ", tup_ts)
+                #     print("stamp: ", stamp)
+                print("parsedstamp: ", stamp)
+                switch_message = True
+                
+            if switch_message:
+                print("timestamps: ", timestamps)
+                print("")
+                switch_message = False
+
     # Opening messages file
     with open(json_filename, 'r', encoding='utf-8') as f:
         messages = json.load(f)
@@ -27,10 +82,7 @@ def main():
         # 'RETURN_TIME_AS_PERIOD': True,
         # 'PREFER_DAY_OF_MONTH': 'first',
         }
-    
-    # blacklist for parsedstamps
-    blacklist = ['mit', 'in die', 'in die', 'und die', 'so', 'die', '40',
-                 '2-3', '1,5', 'jahren', 'und mit', 'mit einem', '18', '14€/12€', '10€/8€', '15€ / 20€', '0163', '60€', '6 mit', '12-22']
+
     # list of useful tempex: In drei Stunden, Am Sa, diese woche, Fr 18 Uhr, 
     count_dates = 0
     count_messages = 0
@@ -47,36 +99,17 @@ def main():
             # if timestamps is None:
                 # try to parse with dateparser
             settings['RELATIVE_BASE'] = date_message
-            parsedstamps = dateparser.search.search_dates(message['message'], languages=[
-                                        'de'], settings=settings)
+            parsedstamps = dateparser.search.search_dates(message['message'], languages=['de'], settings=settings)
+
+            # Set seconds to 0 for each parsed datetime object
+            parsedstamps_no_seconds = []
+            for date_str, date_obj in parsedstamps:
+                date_obj = date_obj.replace(second=0)
+                parsedstamps_no_seconds.append((date_str, date_obj))
+            parsedstamps = parsedstamps_no_seconds
             
-            """
-            timestamps:  (datetime.datetime(2023, 4, 28, 1, 5), datetime.datetime(2023, 5, 1, 15, 15), '') 
-            parsedstamps:  [('28.04.-01.05', datetime.datetime(2023, 4, 28, 1, 5)), ('mit', datetime.datetime(2023, 3, 29, 0, 0)), ('in die', datetime.datetime(2023, 3, 28, 0, 0)), ('Jetzt', datetime.datetime(2023, 3, 23, 11, 39, 21)), ('Am Samstag', datetime.datetime(2023, 3, 25, 0, 0)), ('um 15.15 Uhr am', datetime.datetime(2023, 3, 23, 15, 15)), ('Die', datetime.datetime(2023, 3, 28, 0, 0)), ('in die', datetime.datetime(2023, 3, 28, 0, 0)), ('und die', datetime.datetime(2023, 3, 28, 0, 0)), ('mit', datetime.datetime(2023, 3, 29, 0, 0)), ('mit', datetime.datetime(2023, 3, 29, 0, 0)), ('so', datetime.datetime(2023, 3, 26, 0, 0))]"""
-
             # check if parsedstamps are in timestamps
-            if timestamps is not None and parsedstamps is not None:
-                switch_message = False
-                for stamp in parsedstamps:
-                    tup_ts = tuple(dt.strftime('%Y-%m-%d')
-                                   for dt in timestamps[:-1])
-                    tup_time = tuple(dt.strftime('%H:%M')
-                                     for dt in timestamps[:-1])
-                    if stamp[1].strftime('%Y-%m-%d') not in tup_ts and stamp[0].lower() not in blacklist:
-                        print("parsedstamp: ", stamp)
-                        switch_message = True
-                        #print("-"*50)
-                        #print(message['message'], '\n')
-                    if stamp[1].strftime('%H:%M') not in tup_time and stamp[0].lower() not in blacklist:
-                        print("parsedstamp: ", stamp)
-                        switch_message = True
-                if switch_message:
-                    print("timestamps: ", timestamps)
-                    print("")
-                    switch_message = False
-
-
-
+            check_timestamps(timestamps, parsedstamps, blacklist, blackregexlist)
             
             #print("timestamps: ", timestamps, '\n')
             #print("parsedstamps: ", parsedstamps, '\n')
