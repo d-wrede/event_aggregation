@@ -1,5 +1,5 @@
 import json
-from src.extract_timestamp import extract_timestamp, filter_string
+from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored
 import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
@@ -25,50 +25,49 @@ def main():
 
     def check_timestamps(timestamps, parsedstamps, blacklist=blacklist, blackregexlist=blackregexlist):
         """Check if parsedstamps are in timestamps, on the blacklist or blackregexlist. If not print them."""
-        if timestamps is not None and parsedstamps is not None:
+        if timestamps is None or parsedstamps is None:
+            return
+        switch_message = False
+        for stamp in parsedstamps:
+            # generate date and time tuples for comparison
+            tups_ts = tuple(dt.strftime(
+                '%Y-%m-%d') for dt in timestamps[:-1] if dt is not None)  # if dt is not None else None
+            tups_time = tuple(dt.strftime(
+                '%H:%M') for dt in timestamps[:-1] if dt is not None)
+
+            # tups_fulltimestamp = tuple(
+            #     stamp for stamp in timestamps[:-1] if stamp is not None)
+
+            if match_patterns(blackregexlist, stamp[0]):
+                continue
+            if stamp[1].strftime('%Y-%m-%d') in tups_ts:
+                continue
+            if stamp[1].year > 2025:
+                continue
+            if timestamps[0] is not None and (
+                min(timestamps[:-1]) < stamp[1] < max(timestamps[:-1])):
+                continue
+            if tups_ts and min(tups_ts) < stamp[1].strftime('%Y-%m-%d') < max(tups_ts):
+                continue
+            if tups_time and min(tups_time) < stamp[1].strftime('%H:%M') < max(tups_time):
+                continue
+            if stamp[0].lower() in blacklist:
+                continue
+            if stamp[1].strftime('%H:%M') in tups_time:
+                continue
+            if stamp[0].lower() in blacklist:
+                continue
+
+            # if stamp[1].strftime('%Y-%m-%d') == '2023-03-31' or stamp[0] == '31.3.23':
+            #     print("tup_ts: ", tup_ts)
+            #     print("stamp: ", stamp)
+            print("parsedstamp: ", stamp)
+            switch_message = True
+
+        if switch_message:
+            print("timestamps: ", timestamps)
+            print("")
             switch_message = False
-            for stamp in parsedstamps:
-                # generate date and time tuples for comparison
-                tups_ts = tuple(dt.strftime(
-                    '%Y-%m-%d') for dt in timestamps[:-1] if dt is not None)  # if dt is not None else None
-                tups_time = tuple(dt.strftime(
-                    '%H:%M') for dt in timestamps[:-1] if dt is not None)
-                
-                # tups_fulltimestamp = tuple(
-                #     stamp for stamp in timestamps[:-1] if stamp is not None)
-
-                if match_patterns(blackregexlist, stamp[0]):
-                    continue
-                if stamp[1].strftime('%Y-%m-%d') in tups_ts:
-                    continue
-                if stamp[1].year > 2025:
-                    continue
-                if timestamps[0] is not None:
-                    if (min(timestamps[:-1]) < stamp[1] < max(timestamps[:-1])):
-                        continue
-                if len(tups_ts) > 0:
-                    if min(tups_ts) < stamp[1].strftime('%Y-%m-%d') < max(tups_ts):
-                        continue
-                if len(tups_time) > 0:
-                    if min(tups_time) < stamp[1].strftime('%H:%M') < max(tups_time):
-                        continue
-                if stamp[0].lower() in blacklist:
-                    continue
-                if stamp[1].strftime('%H:%M') in tups_time:
-                    continue
-                if stamp[0].lower() in blacklist:
-                    continue
-
-                # if stamp[1].strftime('%Y-%m-%d') == '2023-03-31' or stamp[0] == '31.3.23':
-                #     print("tup_ts: ", tup_ts)
-                #     print("stamp: ", stamp)
-                print("parsedstamp: ", stamp)
-                switch_message = True
-
-            if switch_message:
-                print("timestamps: ", timestamps)
-                print("")
-                switch_message = False
 
     # Opening messages file
     with open(json_filename, 'r', encoding='utf-8') as f:
@@ -103,9 +102,11 @@ def main():
             # print(date_message)
 
             timestamps = extract_timestamp(message['message'])
+            refactored_result = extract_timestamp_refactored(message['message'])
+            for result in refactored_result:
+                print("refactored_result: ", result)
 
-            # if timestamps is None:
-            # try to parse with dateparser
+            # parse with dateparser
             settings['RELATIVE_BASE'] = date_message
             parsedstamps = dateparser.search.search_dates(
                 message['message'], languages=['de'], settings=settings)
