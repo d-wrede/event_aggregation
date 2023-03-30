@@ -33,6 +33,7 @@ def main():
                     '%Y-%m-%d') for dt in timestamps[:-1] if dt is not None)  # if dt is not None else None
                 tups_time = tuple(dt.strftime(
                     '%H:%M') for dt in timestamps[:-1] if dt is not None)
+                
                 # tups_fulltimestamp = tuple(
                 #     stamp for stamp in timestamps[:-1] if stamp is not None)
 
