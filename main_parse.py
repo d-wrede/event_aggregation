@@ -1,5 +1,5 @@
 import json
-from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored
+from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored, filter_string
 import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
@@ -95,37 +95,49 @@ def main():
     count_parses = 0
     # timestamp extraction
     for message in messages[:]:
+        
         # and 'approved' not in message['timestamps']['comment']:
         if 'message' in message and message['message'] != '':
             count_messages += 1
             date_message = dateparser.parse(message['date'])
-            # print(date_message)
+            
+            switch_priority = False
 
+            # extract timestamps
             timestamps = extract_timestamp(message['message'])
             refactored_result = extract_timestamp_refactored(message['message'])
-            for result in refactored_result:
-                print("refactored_result: ", result)
+            # if any high priority timestamp is captured, print them.
+            if any(t[-1] == 2 for t in refactored_result):
+                switch_priority = True
+                #for result in refactored_result:
+                    #print("\n message:\n", filter_string(
+                        #message['message']))
+                    #print("refactored_result: ", result)
 
             # parse with dateparser
             settings['RELATIVE_BASE'] = date_message
             parsedstamps = dateparser.search.search_dates(
                 message['message'], languages=['de'], settings=settings)
 
+            #if switch_priority:
+                #print("parsedstamps: ", parsedstamps)
+                #print("timestamps: ", timestamps, '\n')
             # Set seconds to 0 for each parsed datetime object
-            parsedstamps_no_seconds = []
-            if parsedstamps:
-                for date_str, date_obj in parsedstamps:
-                    date_obj = date_obj.replace(second=0)
-                    parsedstamps_no_seconds.append((date_str, date_obj))
-                parsedstamps = parsedstamps_no_seconds
+            # parsedstamps_no_seconds = []
+            # if parsedstamps and switch_priority:
+            #     for date_str, date_obj in parsedstamps:
+            #         date_obj = date_obj.replace(second=0)
+            #         parsedstamps_no_seconds.append((date_str, date_obj))
+            #     parsedstamps = parsedstamps_no_seconds
 
                 # check if parsedstamps are in timestamps
-                check_timestamps(timestamps, parsedstamps,
-                                blacklist, blackregexlist)
+                # check_timestamps(timestamps, parsedstamps,
+                #                 blacklist, blackregexlist)
 
             # print("timestamps: ", timestamps, '\n')
             # print("parsedstamps: ", parsedstamps, '\n')
             # add timestamps to message dict
+            
             message.setdefault('timestamps', {})
             message['timestamps'] = timestamps
             message.setdefault('parsedstamps', {})
