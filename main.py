@@ -4,6 +4,7 @@ import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
 import re
+import datetime
 
 # 'telegram_messages.json'
 json_filename = '/Users/danielwrede/Documents/read_event_messages/telegram_messages.json'
@@ -100,15 +101,22 @@ def main():
         if 'message' in message and message['message'] != '':
             count_messages += 1
             date_message = dateparser.parse(message['date'])
+            print("message: ", message['message'])
             
             switch_priority = False
 
             # extract timestamps
             timestamps = extract_timestamp(message['message'])
-            refactored_result = extract_timestamp_refactored(message['message'])
+            times_refactored = extract_timestamp_refactored(message['message'])
+            
+            timestamps_refactored = set()
+            # for tuple in times_refactored:
+            #     tuple = [int(x) if x is not None else 0 for x in tuple]
+            #     timestamps_refactored.add(datetime.datetime(tuple[0], tuple[1], tuple[2], tuple[3], tuple[4]))
+            
             # if any high priority timestamp is captured, print them.
-            if any(t[-1] == 2 for t in refactored_result):
-                switch_priority = True
+            # if any(t[-1] == 2 for t in refactored_result):
+            #     switch_priority = True
                 #for result in refactored_result:
                     #print("\n message:\n", filter_string(
                         #message['message']))
@@ -120,24 +128,25 @@ def main():
                 message['message'], languages=['de'], settings=settings)
 
             #if switch_priority:
-                #print("parsedstamps: ", parsedstamps)
-                #print("timestamps: ", timestamps, '\n')
+            # print("parsedstamps: ", parsedstamps)
+            # print("timestamps:   ", timestamps)
+            print("t-stamps_ref: ", times_refactored)
+            continue
             # Set seconds to 0 for each parsed datetime object
-            # parsedstamps_no_seconds = []
-            # if parsedstamps and switch_priority:
-            #     for date_str, date_obj in parsedstamps:
-            #         date_obj = date_obj.replace(second=0)
-            #         parsedstamps_no_seconds.append((date_str, date_obj))
-            #     parsedstamps = parsedstamps_no_seconds
+            parsedstamps_no_seconds = []
+            if parsedstamps:
+                # step through parsedstamps and remove seconds
+                for date_str, date_obj in parsedstamps:
+                    date_obj = date_obj.replace(second=0)
+                    parsedstamps_no_seconds.append((date_str, date_obj))
+                parsedstamps = parsedstamps_no_seconds
 
-                # check if parsedstamps are in timestamps
-                # check_timestamps(timestamps, parsedstamps,
-                #                 blacklist, blackregexlist)
+                #check if parsedstamps are in timestamps
+                check_timestamps(timestamps_refactored, parsedstamps,
+                                blacklist, blackregexlist)
 
-            # print("timestamps: ", timestamps, '\n')
-            # print("parsedstamps: ", parsedstamps, '\n')
-            # add timestamps to message dict
             
+            # add timestamps to message dict
             message.setdefault('timestamps', {})
             message['timestamps'] = timestamps
             message.setdefault('parsedstamps', {})
