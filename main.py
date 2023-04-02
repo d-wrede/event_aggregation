@@ -26,15 +26,17 @@ def main():
 
     def check_timestamps(timestamps, parsedstamps, blacklist=blacklist, blackregexlist=blackregexlist):
         """Check if parsedstamps are in timestamps, on the blacklist or blackregexlist. If not print them."""
+        if len(timestamps) == 0 or len(parsedstamps) == 0:
+            return
         if timestamps is None or parsedstamps is None:
             return
         switch_message = False
         for stamp in parsedstamps:
             # generate date and time tuples for comparison
             tups_ts = tuple(dt.strftime(
-                '%Y-%m-%d') for dt in timestamps[:-1] if dt is not None)  # if dt is not None else None
+                '%Y-%m-%d') for dt in timestamps if dt is not None)  # if dt is not None else None
             tups_time = tuple(dt.strftime(
-                '%H:%M') for dt in timestamps[:-1] if dt is not None)
+                '%H:%M') for dt in timestamps if dt is not None)
 
             # tups_fulltimestamp = tuple(
             #     stamp for stamp in timestamps[:-1] if stamp is not None)
@@ -46,7 +48,7 @@ def main():
             if stamp[1].year > 2025:
                 continue
             if timestamps[0] is not None and (
-                min(timestamps[:-1]) < stamp[1] < max(timestamps[:-1])):
+                min(timestamps) < stamp[1] < max(timestamps)):
                 continue
             if tups_ts and min(tups_ts) < stamp[1].strftime('%Y-%m-%d') < max(tups_ts):
                 continue
@@ -101,26 +103,42 @@ def main():
         if 'message' in message and message['message'] != '':
             count_messages += 1
             date_message = dateparser.parse(message['date'])
-            print("message: ", message['message'])
-            
+            #print("message: ", message['message'])
+
             switch_priority = False
 
             # extract timestamps
             timestamps = extract_timestamp(message['message'])
             times_refactored = extract_timestamp_refactored(message['message'])
-            
+
+            def tuple_to_timestamp(t):
+                year, month, day, hour, minute = list(t)
+                # If any of the date values is None, set them to 1 (January 1st).
+                # If any of the time values is None, set them to 0 (midnight).
+                if year is None:
+                    year = 0
+                if month is None:
+                    month = 1
+                if day is None:
+                    day = 1
+                if hour is None or hour == '24':
+                    hour = 0
+                if minute is None:
+                    minute = 0
+
+                # all vars to int:
+                year = int(year) + 2000
+                month = int(month)
+                day = int(day)
+                hour = int(hour)
+                minute = int(minute)
+                return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
+
             timestamps_refactored = set()
-            # for tuple in times_refactored:
-            #     tuple = [int(x) if x is not None else 0 for x in tuple]
-            #     timestamps_refactored.add(datetime.datetime(tuple[0], tuple[1], tuple[2], tuple[3], tuple[4]))
-            
-            # if any high priority timestamp is captured, print them.
-            # if any(t[-1] == 2 for t in refactored_result):
-            #     switch_priority = True
-                #for result in refactored_result:
-                    #print("\n message:\n", filter_string(
-                        #message['message']))
-                    #print("refactored_result: ", result)
+            for t in times_refactored:
+                timestamps_refactored.add(tuple_to_timestamp(t[:5]))
+            timestamps_refactored = list(timestamps_refactored)
+
 
             # parse with dateparser
             settings['RELATIVE_BASE'] = date_message
@@ -130,8 +148,7 @@ def main():
             #if switch_priority:
             # print("parsedstamps: ", parsedstamps)
             # print("timestamps:   ", timestamps)
-            print("t-stamps_ref: ", times_refactored)
-            continue
+            # print("t-stamps_ref: ", timestamps_refactored)
             # Set seconds to 0 for each parsed datetime object
             parsedstamps_no_seconds = []
             if parsedstamps:
@@ -145,7 +162,7 @@ def main():
                 check_timestamps(timestamps_refactored, parsedstamps,
                                 blacklist, blackregexlist)
 
-            
+            continue
             # add timestamps to message dict
             message.setdefault('timestamps', {})
             message['timestamps'] = timestamps
@@ -157,8 +174,8 @@ def main():
             if parsedstamps is not None:
                 count_parses += 1
 
-        # if count_messages == 5:
-        #     break
+                    # if count_messages == 5:
+                    #     break
 
     # sort messages by timestamp
     messages.sort(key=lambda x: str(
