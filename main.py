@@ -1,5 +1,5 @@
 import json
-from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored, filter_string
+from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored, extract_timestamp_refactored2, filter_string
 import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
@@ -109,35 +109,36 @@ def main():
 
             # extract timestamps
             timestamps = extract_timestamp(message['message'])
-            times_refactored = extract_timestamp_refactored(message['message'])
+            # getting list of dicts with date and time
+            times_refactored = extract_timestamp_refactored2(
+                message['message'])
 
-            def tuple_to_timestamp(t):
-                year, month, day, hour, minute = list(t)
+            def dict_to_timestamp(datedict):
+                """Convert dict to timestamp."""
                 # If any of the date values is None, set them to 1 (January 1st).
                 # If any of the time values is None, set them to 0 (midnight).
-                if year is None:
-                    year = 0
-                if month is None:
-                    month = 1
-                if day is None:
-                    day = 1
-                if hour is None or hour == '24':
-                    hour = 0
-                if minute is None:
-                    minute = 0
+                if datedict['year'] is None:
+                    datedict['year'] = 0
+                if datedict['month'] is None:
+                    datedict['month'] = 1
+                if datedict['day'] is None:
+                    datedict['day'] = 1
+                if datedict['hour'] is None or datedict['hour'] == '24':
+                    datedict['hour'] = 0
+                if datedict['minute'] is None:
+                    datedict['minute'] = 0
 
                 # all vars to int:
-                year = int(year) + 2000
-                month = int(month)
-                day = int(day)
-                hour = int(hour)
-                minute = int(minute)
-                return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
+                datedict['year'] = int(datedict['year']) + 2000
+                datedict['month'] = int(datedict['month'])
+                datedict['day'] = int(datedict['day'])
+                datedict['hour'] = int(datedict['hour'])
+                datedict['minute'] = int(datedict['minute'])
+                return datetime.datetime(year=datedict['year'], month=datedict['month'], day=datedict['day'], hour=datedict['hour'], minute=datedict['minute'])
 
-            timestamps_refactored = set()
-            for t in times_refactored:
-                timestamps_refactored.add(tuple_to_timestamp(t[:5]))
-            timestamps_refactored = list(timestamps_refactored)
+            # convert dicts to timestamps
+            for datedict in times_refactored:
+                datedict['timestamp'] = dict_to_timestamp(datedict.copy())
 
 
             # parse with dateparser
@@ -159,6 +160,8 @@ def main():
                 parsedstamps = parsedstamps_no_seconds
 
                 #check if parsedstamps are in timestamps
+                timestamps_refactored = [stampdict['timestamp']
+                                         for stampdict in times_refactored]
                 check_timestamps(timestamps_refactored, parsedstamps,
                                 blacklist, blackregexlist)
 
