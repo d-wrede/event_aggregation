@@ -1,12 +1,11 @@
 import json
-from src.extract_timestamp import extract_timestamp, extract_timestamp_refactored, extract_timestamp_refactored2, filter_string
+from src.extract_timestamp import extract_timestamp_refactored2, filter_string
 import dateparser.search
 import dateparser
 from dateparser_data.settings import default_parsers
 import re
 import datetime
 
-# 'telegram_messages.json'
 json_filename = '/Users/danielwrede/Documents/read_event_messages/telegram_messages.json'
 
 
@@ -51,8 +50,8 @@ def main():
                 continue
             
             if len(timestamps) > 0:
-                min_timestamp = min(timestamps_refactored,key=lambda x: x[1])[1]
-                max_timestamp = max(timestamps_refactored, key=lambda x: x[1])[1]
+                min_timestamp = min(timestamps,key=lambda x: x[1])[1]
+                max_timestamp = max(timestamps, key=lambda x: x[1])[1]
                 if min_timestamp < stamp[1] < max_timestamp:
                     continue
             if tups_ts and min(tups_ts) < stamp[1].strftime('%Y-%m-%d') < max(tups_ts):
@@ -132,15 +131,13 @@ def main():
             date_message = dateparser.parse(message['date'])
             #print("message: ", message['message'])
 
-            # extract timestamps
-            timestamps = extract_timestamp(message['message'])
-            # getting list of dicts with date and time
-            times_refactored = extract_timestamp_refactored2(
+            # extract timestamps as list of dicts with date and time
+            time_matches = extract_timestamp_refactored2(
                 message['message'])
 
             # convert dicts to timestamps:
             # {year: YYYY, month: MM, day: DD, hour: HH, minute: MM} -> datetime
-            for datedict in times_refactored:
+            for datedict in time_matches:
                 datedict['timestamp'] = dict_to_timestamp(datedict.copy())
 
             # parse with dateparser
@@ -160,15 +157,15 @@ def main():
                 #check if parsedstamps are in timestamps
                 # timestamps_refactored = [stampdict['timestamp']
                 #                          for stampdict in times_refactored]
-                timestamps_refactored = [
-                    (stampdict['matching_substring'], stampdict['timestamp']) for stampdict in times_refactored]
+                timestamps = [
+                    (stampdict['matching_substring'], stampdict['timestamp']) for stampdict in time_matches]
 
-                check_timestamps(timestamps_refactored, parsedstamps)
+                check_timestamps(timestamps, parsedstamps)
 
 
             # add timestamps to message dict
             message.setdefault('timestamps', {})
-            message['timestamps'] = timestamps_refactored
+            message['timestamps'] = timestamps
             message.setdefault('parsedstamps', {})
             message['parsedstamps'] = parsedstamps
 
@@ -176,9 +173,6 @@ def main():
                 count_dates += 1
             if parsedstamps is not None:
                 count_parses += 1
-
-                    # if count_messages == 5:
-                    #     break
 
     # sort messages by timestamp
     messages.sort(key=lambda x: str(
