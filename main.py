@@ -82,7 +82,7 @@ def main():
             message.setdefault('parsedstamps', {})
             message['parsedstamps'] = parsedstamps
 
-            if timestamps is not None:
+            if time_matches is not None:
                 count_dates += 1
             if parsedstamps is not None:
                 count_parses += 1
@@ -94,30 +94,24 @@ def main():
     print(
         f'found {count_dates} dates and {count_parses} parses in {len(messages)} messages')
     # save messages with timestamps
-    # with open(json_filename, 'w', encoding='utf-8') as f:
+    # with open('new_message_list.json', 'w', encoding='utf-8') as f:
     #     json.dump(messages, f, indent=4, ensure_ascii=False)
-    exit()
+
     with open('file.txt', 'w', encoding='utf-8') as f:
         for message in messages:
             if 'message' in message and message['message'] != '':
-                # print(message['timestamps'])
-                f.write(str(list(message['timestamps']).sort(key=lambda x: str(
-                    x if x is not None else float('inf')))) + '\n')
-                # print(message['parsedstamps'])
-                f.write(str(message['parsedstamps'].sort(
-                    key=lambda x: x[1])) + '\n\n')
+                if message['timestamps']:
+                    timestamps_sorted = sorted(message['timestamps'], key=lambda x: str(
+                        x if x is not None else float('inf')))
+                    f.write(str(timestamps_sorted) + '\n')
+                    print('timestamps: ', timestamps_sorted)
+                if message['parsedstamps']:
+                    parsedstamps_sorted = sorted(message['parsedstamps'], key=lambda x: x[1])
+                    f.write(str(parsedstamps_sorted) + '\n\n')
+                    print('parsedstamps: ', parsedstamps_sorted)
 
-                # write comment if available
-                # if message['timestamps']['comment'] is not None:
-                #     f.write(str(message['timestamps']['comment']) + '\n')
-                # f.write('-'*50 + '\n')
-                # f.write(filter_string(message['message']) + '\n\n')
 
-    # further terms to be extracted:
-    # - sender/author spaCy?
-    # - place
-    # - category
-    # - URL
+
 
 
 if __name__ == "__main__":
