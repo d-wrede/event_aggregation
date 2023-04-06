@@ -65,6 +65,7 @@ def check_timestamps(timestamps, parsedstamps):
         print("")
         switch_message = False
 
+
 def dateparser_vs_ownparser(message, time_matches):
     """Compare dateparser with own parser."""
     default_parsers.reverse()
@@ -103,25 +104,4 @@ def dateparser_vs_ownparser(message, time_matches):
 
         check_timestamps(timestamps, parsedstamps)
 
-def dict_to_timestamp(datedict):
-    """Convert dict to timestamp."""
-    # If any of the date values is None, set them to 1 (January 1st).
-    # If any of the time values is None, set them to 0 (midnight).
-    if datedict['year'] is None:
-        datedict['year'] = 0
-    if datedict['month'] is None:
-        datedict['month'] = 1
-    if datedict['day'] is None:
-        datedict['day'] = 1
-    if datedict['hour'] is None or datedict['hour'] == '24':
-        datedict['hour'] = 0
-    if datedict['minute'] is None:
-        datedict['minute'] = 0
 
-    # all vars to int:
-    datedict['year'] = int(datedict['year']) + 2000
-    datedict['month'] = int(datedict['month'])
-    datedict['day'] = int(datedict['day'])
-    datedict['hour'] = int(datedict['hour'])
-    datedict['minute'] = int(datedict['minute'])
-    return datetime.datetime(year=datedict['year'], month=datedict['month'], day=datedict['day'], hour=datedict['hour'], minute=datedict['minute'])

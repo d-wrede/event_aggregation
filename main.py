@@ -1,6 +1,6 @@
 import json
 from src.extract_timestamp import extract_timestamp, filter_string
-from src.organize_timestamps import dict_to_timestamp, dateparser_vs_ownparser
+from src.organize_timestamps import dateparser_vs_ownparser
 
 
 
@@ -31,10 +31,7 @@ def main():
 
         # TODO: filter dates.
 
-        # convert dicts to timestamps:
-        # {year: YYYY, month: MM, day: DD, hour: HH, minute: MM} -> datetime
-        for datedict in time_matches:
-            datedict['timestamp'] = dict_to_timestamp(datedict.copy())
+        
 
         # compare dateparser with own parser results
         dateparser_vs_ownparser(message, time_matches)
@@ -50,7 +47,7 @@ def main():
         if time_matches:
             with open('file.txt', 'a', encoding='utf-8') as f:
                 for match in time_matches:
-                    f.write(f'{match["matching_substring"]}: {match["timestamp"]}, priority: {match["priority"]}\n')
+                    f.write(f'{match["matching_substring"]}: {match["timestamp"]}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n')
                 f.write(str(filter_string(message['message'])) + '\n\n')
                 
 
