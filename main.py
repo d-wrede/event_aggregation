@@ -34,7 +34,7 @@ def main():
         
 
         # compare dateparser with own parser results
-        dateparser_vs_ownparser(message, time_matches)
+        #dateparser_vs_ownparser(message, time_matches)
 
         # add timestamps to message dict
         #message.setdefault('timestamps', {})
@@ -47,7 +47,17 @@ def main():
         if time_matches:
             with open('file.txt', 'a', encoding='utf-8') as f:
                 for match in time_matches:
-                    f.write(f'{match["matching_substring"]}: {match["timestamp"]}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n')
+                    timestamp = ''
+                    if match['date1']:
+                        timestamp += match['date1'].strftime('%Y-%m-%d')
+                    if match['clock1']:
+                        timestamp += ' ' + match['clock1'].strftime('%H:%M')
+                    if match['date2']:
+                        timestamp += ' - ' + match['date2'].strftime('%Y-%m-%d')
+                    if match['clock2']:
+                        timestamp += ' ' + match['clock2'].strftime('%H:%M')
+
+                    f.write(f'{match["matching_substring"]}: {timestamp}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n')
                 f.write(str(filter_string(message['message'])) + '\n\n')
                 
 
