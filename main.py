@@ -6,6 +6,39 @@ from src.organize_timestamps import dateparser_vs_ownparser
 
 json_filename = '/Users/danielwrede/Documents/read_event_messages/telegram_messages.json'
 
+def interpret_dates(time_matches):
+    """Interpret dates by connecting date and time."""
+    interpreted_dates = []
+    for match in time_matches:
+        if match['date1']:
+            interpreted_dates.append(match)
+    
+    # if available, use double_clock match
+    for match in time_matches:
+        if 'double_clock' in match['pattern_type']:
+            for date in interpreted_dates:
+                if not date['clock1']:
+                    date['clock1'] = match['clock1']
+                    date['clock2'] = match['clock2']
+    
+    # else use min and max single clock matches
+    valid_time_matches = [t for t in time_matches if t['clock1'] is not None or t['clock2'] is not None]
+    minclock = min(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+    maxclock = max(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+    for date in interpreted_dates:
+        if not date['clock1']:
+            date['clock1'] = minclock['clock1'] or minclock['clock2']
+            date['clock2'] = maxclock['clock1'] or maxclock['clock2']
+
+
+    # for match in interpreted_dates:
+    #     if not match['clock1']:
+    #         match1, new_start_pos = next(((d['clock1'], d['start_pos']) for d in time_matches if d['start_pos'] > match['start_pos']), None)
+    #         match2 = next((d['clock2'] for d in time_matches if d['start_pos'] > new_start_pos), None)
+    print("time_matches: ", time_matches)
+    print("interpreted_dates: ", interpreted_dates)
+    return interpreted_dates
+
 
 def main():
 
@@ -29,7 +62,8 @@ def main():
         time_matches = extract_timestamp(
             message['message'])
 
-        # TODO: filter dates.
+        # interpret dates by connecting date and time
+        interpreted_dates = interpret_dates(time_matches)
 
         
 
