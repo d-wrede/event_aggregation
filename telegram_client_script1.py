@@ -4,16 +4,16 @@ import configparser
 from telethon import TelegramClient
 import json
 
-# channel search term
-search_term = 'dance'
+
+# Setting configuration values
+channel = 'Conscious_Freiburg'
+search_term = channel
 json_filename = 'telegram_messages.json'
 nr_messages = 10
 
 # Reading Configs
 config = configparser.ConfigParser()
 config.read("config.ini")
-
-# Setting configuration values
 api_id = config['Telegram']['api_id']
 api_hash = str(config['Telegram']['api_hash'])
 phone = config['Telegram']['phone']
@@ -90,8 +90,11 @@ async def get_messages():
         with open(json_filename, 'r', encoding='utf-8') as f:
             new_messages_list = json.load(f)
             messages_id_set = set(msg['id'] for msg in new_messages_list)
+            print("len(messages_id_set): ", len(messages_id_set))
+            print("len(messages_list): ", len(messages_list))
             new_messages_list += [msg for msg in messages_list if msg['id']
                                   not in messages_id_set]
+            print("new messages: ", len(new_messages_list) - len(messages_id_set))
     except:
         new_messages_list = messages_list
 
