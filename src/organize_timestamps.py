@@ -3,6 +3,63 @@ import re
 import dateparser.search
 from dateparser_data.settings import default_parsers
 
+
+def get_min_date(message):
+        if not message.get('timestamps') or not isinstance(message['timestamps'], list):
+            return '9999-12-31'
+
+        min_date = message['timestamps'][0]['date1']
+
+        for entry in message['timestamps']:
+            if entry['date1'] and entry['date1'] < min_date:
+                min_date = entry['date1']
+
+        return min_date
+
+
+def interpret_dates(time_matches):
+    """Interpret dates by connecting date and time."""
+    interpreted_dates = []
+    for match in time_matches:
+        if match['date1']:
+            interpreted_dates.append({'date1': match['date1'], 'clock1': match['clock1'],
+                                      'date2': match['date2'], 'clock2' : match['clock2']})
+    
+    # if available, use double_clock match
+    for match in time_matches:
+        if 'double_clock' in match['pattern_type']:
+            for date in interpreted_dates:
+                if not date['clock1']:
+                    date['clock1'] = match['clock1']
+                    date['clock2'] = match['clock2']
+    
+    # else use min and max single clock matches
+    valid_time_matches = [t for t in time_matches if t['clock1'] is not None or t['clock2'] is not None]
+    if valid_time_matches:
+        minclock = min(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+        maxclock = max(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+        for date in interpreted_dates:
+            if not date['clock1']:
+                date['clock1'] = minclock['clock1'] or minclock['clock2']
+                date['clock2'] = maxclock['clock1'] or maxclock['clock2']
+    else:
+        print("no valid time matches found")
+
+    # serialize timestamps
+    for date in interpreted_dates:
+        if date['clock1']:
+            date['clock1'] = date['clock1'].strftime('%H:%M')
+        if date['clock2']:
+            date['clock2'] = date['clock2'].strftime('%H:%M')
+        if date['date1']:
+            date['date1'] = date['date1'].strftime('%Y-%m-%d')
+        if date['date2']:
+            date['date2'] = date['date2'].strftime('%Y-%m-%d')
+
+    return interpreted_dates
+
+
+
 def check_timestamps(timestamps, parsedstamps):
     """
     This function filters the parsedstamps. It checks if the parsedstamps are in the timestamps list or in the blacklist or blackregexlist.
