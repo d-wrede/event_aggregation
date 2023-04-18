@@ -5,6 +5,7 @@ from src.organize_timestamps import (
     interpret_dates,
     get_min_date,
 )
+from src.extract_place import extract_place
 
 
 json_filename = (
@@ -44,6 +45,10 @@ def main():
         # further terms to be extracted:
         # - sender/author
         # - place
+        place, topic, misc = extract_place(message["message"])
+        print("place: ", place)
+        print("topic: ", topic)
+        print("misc: ", misc)
         # - category
 
         if time_matches is not None:
