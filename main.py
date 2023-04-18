@@ -11,7 +11,8 @@ def interpret_dates(time_matches):
     interpreted_dates = []
     for match in time_matches:
         if match['date1']:
-            interpreted_dates.append(match)
+            interpreted_dates.append({'date1': match['date1'], 'clock1': match['clock1'],
+                                      'date2': match['date2'], 'clock2' : match['clock2']})
     
     # if available, use double_clock match
     for match in time_matches:
@@ -23,20 +24,27 @@ def interpret_dates(time_matches):
     
     # else use min and max single clock matches
     valid_time_matches = [t for t in time_matches if t['clock1'] is not None or t['clock2'] is not None]
-    minclock = min(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
-    maxclock = max(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+    if valid_time_matches:
+        minclock = min(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+        maxclock = max(valid_time_matches, key=lambda x: x['clock1'] or x['clock2'])
+        for date in interpreted_dates:
+            if not date['clock1']:
+                date['clock1'] = minclock['clock1'] or minclock['clock2']
+                date['clock2'] = maxclock['clock1'] or maxclock['clock2']
+    else:
+        print("no valid time matches found")
+
+    # serialize timestamps
     for date in interpreted_dates:
-        if not date['clock1']:
-            date['clock1'] = minclock['clock1'] or minclock['clock2']
-            date['clock2'] = maxclock['clock1'] or maxclock['clock2']
+        if date['clock1']:
+            date['clock1'] = date['clock1'].strftime('%H:%M')
+        if date['clock2']:
+            date['clock2'] = date['clock2'].strftime('%H:%M')
+        if date['date1']:
+            date['date1'] = date['date1'].strftime('%Y-%m-%d')
+        if date['date2']:
+            date['date2'] = date['date2'].strftime('%Y-%m-%d')
 
-
-    # for match in interpreted_dates:
-    #     if not match['clock1']:
-    #         match1, new_start_pos = next(((d['clock1'], d['start_pos']) for d in time_matches if d['start_pos'] > match['start_pos']), None)
-    #         match2 = next((d['clock2'] for d in time_matches if d['start_pos'] > new_start_pos), None)
-    print("time_matches: ", time_matches)
-    print("interpreted_dates: ", interpreted_dates)
     return interpreted_dates
 
 
@@ -65,8 +73,10 @@ def main():
         # interpret dates by connecting date and time
         interpreted_dates = interpret_dates(time_matches)
 
+        # add interpreted dates to message dict
+        message.setdefault('timestamps', [])
+        message['timestamps'] = interpreted_dates
         
-
         # compare dateparser with own parser results
         #dateparser_vs_ownparser(message, time_matches)
 
@@ -98,16 +108,32 @@ def main():
     print(
         f'found {count_dates} dates in {len(messages)} messages')
 
-    exit()
 
     # sort messages by timestamp
-    messages.sort(key=lambda x: str(
-        x.get('timestamps', float('inf'))))
+    # messages.sort(key=lambda x: str(
+    #     x.get('timestamps', float('inf'))))
+    # messages.sort(key=lambda x: min([entry['date1'] for entry in x['timestamps']]) if x['timestamps'] else '9999-12-31')
+    def get_min_date(message):
+        if not message.get('timestamps') or not isinstance(message['timestamps'], list):
+            return '9999-12-31'
+
+        min_date = message['timestamps'][0]['date1']
+
+        for entry in message['timestamps']:
+            if entry['date1'] and entry['date1'] < min_date:
+                min_date = entry['date1']
+
+        return min_date
+
+    messages.sort(key=get_min_date)
+
+
 
     # save messages with timestamps
-    # with open('new_message_list.json', 'w', encoding='utf-8') as f:
-    #     json.dump(messages, f, indent=4, ensure_ascii=False)
+    with open('new_message_list.json', 'w', encoding='utf-8') as f:
+        json.dump(messages, f, indent=4, ensure_ascii=False)
 
+    exit()
     with open('file.txt', 'w', encoding='utf-8') as f:
         for message in messages:
             if 'message' in message and message['message'] != '':
