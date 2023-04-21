@@ -14,8 +14,53 @@ from sklearn.decomposition import NMF
 from collections import defaultdict
 import re
 import spacy
+
 # Load spaCy's German model
 nlp = spacy.load("de_core_news_lg")
+
+from rake_nltk import Rake
+
+r = Rake(language="german")
+
+
+def spacy_ner(message):
+    doc = nlp(message)
+    place = []
+    topic = []
+    misc = []
+    for ent in doc.ents:
+        if ent.label_ == "LOC":
+            place.append(ent.text)
+        if ent.label_ == "ORG":
+            topic.append(ent.text)
+        if ent.label_ == "MISC":
+            misc.append(ent.text)
+
+    return place, topic, misc
+
+
+def rake_keywords(message, max_length=3):
+    r.extract_keywords_from_text(message)
+    scored_keywords = r.get_ranked_phrases_with_scores()
+
+    # Filter out keywords longer than the max_length
+    filtered_keywords = [
+        kw for score, kw in scored_keywords if len(kw.split()) <= max_length
+    ]
+
+    # Find the original case of the keywords in the message
+    original_case_keywords = []
+    for keyword in filtered_keywords:
+        # Escape any special characters in the keyword for regex search
+        escaped_keyword = re.escape(keyword)
+        # Search for the keyword in the message, case insensitive
+        match = re.search(escaped_keyword, message, flags=re.IGNORECASE)
+        if match:
+            # Append the matched original keyword to the list
+            original_case_keywords.append(match.group())
+
+    return original_case_keywords
+
 
 def cluster_messages(cleaned_texts):
     # Load the pre-trained model
@@ -64,7 +109,9 @@ def tf_IDF(cleaned_texts):
             # Escape any special characters in the keyword for regex search
             escaped_keyword = re.escape(keyword)
             # Search for the keyword in the message, case insensitive
-            match = re.search(escaped_keyword, cleaned_texts[index], flags=re.IGNORECASE)
+            match = re.search(
+                escaped_keyword, cleaned_texts[index], flags=re.IGNORECASE
+            )
             if match:
                 # Append the matched original keyword to the list
                 original_case_keywords.append(match.group())
@@ -96,7 +143,8 @@ def LDA_topic_modeling(cleaned_texts):
     for topic in topics:
         topic_keywords = topic[1]
         keywords_list = [
-            keyword_prob.split('*')[1].strip('" ') for keyword_prob in topic_keywords.split(' + ')
+            keyword_prob.split("*")[1].strip('" ')
+            for keyword_prob in topic_keywords.split(" + ")
         ]
         parsed_topics.append(keywords_list)
 
@@ -123,7 +171,9 @@ def LDA_topic_modeling2(cleaned_texts):
     topic_distributions = model.get_document_topics(corpus)
 
     # Find the topic with the highest probability for each message
-    most_probable_topics = [max(topic_dist, key=lambda x: x[1])[0] for topic_dist in topic_distributions]
+    most_probable_topics = [
+        max(topic_dist, key=lambda x: x[1])[0] for topic_dist in topic_distributions
+    ]
 
     # Get the topic keywords
     topic_keywords = model.print_topics(num_words=5)
@@ -135,14 +185,15 @@ def LDA_topic_modeling2(cleaned_texts):
     lda_keywords = []
     for topic_num in most_probable_topics:
         keywords_list = [
-            keyword_prob.split('*')[1].strip('" ') for keyword_prob in topic_keywords_dict[topic_num].split(' + ')
+            keyword_prob.split("*")[1].strip('" ')
+            for keyword_prob in topic_keywords_dict[topic_num].split(" + ")
         ]
         lda_keywords.append(keywords_list)
 
     return lda_keywords
 
 
-def sort_keywords_by_input_order2(lda_keywords, cleaned_texts):
+def sort_keywords_by_input_order(lda_keywords, cleaned_texts):
     sorted_lda_keywords = [[] for _ in range(len(cleaned_texts))]
     used_keywords = set()
 
@@ -158,29 +209,9 @@ def sort_keywords_by_input_order2(lda_keywords, cleaned_texts):
     return sorted_lda_keywords
 
 
-def sort_keywords_by_input_order(parsed_topics, cleaned_texts):
-    sorted_keywords = []
-    
-    for topic_keywords in parsed_topics:
-        topic_keywords_order = []
-        
-        for keyword in topic_keywords:
-            # Find the first occurrence of the keyword in the cleaned_texts
-            for idx, text in enumerate(cleaned_texts):
-                if keyword in text:
-                    topic_keywords_order.append((idx, keyword))
-                    break
-        
-        # Sort the keywords based on their first occurrence in the input texts
-        sorted_topic_keywords = [kw for _, kw in sorted(topic_keywords_order, key=lambda x: x[0])]
-        sorted_keywords.append(sorted_topic_keywords)
-    
-    return sorted_keywords
-
-
 def NMF_topic_modeling(cleaned_texts):
     # Define the number of topics you want to extract
-    n_topics = 5
+    n_topics = len(cleaned_texts)
 
     # Create a TF-IDF vectorizer
     vectorizer = TfidfVectorizer(stop_words="english")
@@ -212,19 +243,110 @@ def NMF_topic_modeling(cleaned_texts):
     return topics
 
 
-def find_common_topics(keyword_dicts):
+# def find_common_topics(keyword_dicts):
+#     term_count = defaultdict(float)
+#     longest_terms = {}
+#     for algorithm, keywords in keyword_dicts.items():
+#         for rank, keyword in enumerate(keywords):
+#             # Assign a score based on the order of the keyword (higher rank = lower score)
+#             score = 7 - rank if rank < 7 else 1
+
+#             term_count[keyword] += score
+
+#             # If the keyword is a substring of a longer term, update the longest_terms dictionary
+#             if keyword in longest_terms:
+#                 if (
+#                     len(longest_terms[keyword]) < len(keyword)
+#                     and len(keyword.split()) <= 2
+#                 ):
+#                     longest_terms[keyword] = keyword
+#             else:
+#                 if len(keyword.split()) <= 2:
+#                     longest_terms[keyword] = keyword
+
+#     # Sort the terms by their score in descending order
+#     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
+
+#     # Create a list of the most common terms, using the longest form of the term
+#     most_common_terms = []
+#     for term, score in sorted_terms:
+#         if term in longest_terms:
+#             most_common_terms.append(longest_terms[term])
+
+#     return most_common_terms
+
+# def find_common_topics(keyword_dicts):
+#     term_count = defaultdict(float)
+#     longest_terms = {}
+#     for algorithm, keywords in keyword_dicts.items():
+#         for rank, keyword in enumerate(keywords):
+#             # Assign a score based on the order of the keyword (higher rank = lower score)
+#             score = 7 - rank if rank < 7 else 1
+
+#             term_count[keyword] += score
+
+#             # If the keyword is a substring of a longer term, update the longest_terms dictionary
+#             if keyword in longest_terms:
+#                 if (
+#                     len(longest_terms[keyword]) < len(keyword)
+#                     and len(keyword.split()) <= 2
+#                 ):
+#                     longest_terms[keyword] = keyword
+#             else:
+#                 if len(keyword.split()) <= 2:
+#                     longest_terms[keyword] = keyword
+
+#     # Sort the terms by their score in descending order
+#     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
+
+#     # Create a list of the most common terms, using the longest form of the term
+#     most_common_terms = []
+#     for term, score in sorted_terms:
+#         if term in longest_terms:
+#             is_subset = False
+#             for i, common_term in enumerate(most_common_terms):
+#                 if term in common_term:
+#                     is_subset = True
+#                     break
+#                 elif common_term in term:
+#                     most_common_terms[i] = term
+#                     is_subset = True
+#                     break
+
+#             if not is_subset:
+#                 most_common_terms.append(longest_terms[term])
+
+#     return most_common_terms
+
+
+def find_common_topics(keyword_dicts, text):
     term_count = defaultdict(float)
     longest_terms = {}
+    text_length = len(text)
+
     for algorithm, keywords in keyword_dicts.items():
         for rank, keyword in enumerate(keywords):
-            # Assign a score based on the order of the keyword (higher rank = lower score)
-            score = 7 - rank if rank < 7 else 1
+            # Find the index position of the keyword in the text
+            index_position = text.find(keyword)
+
+            if index_position != -1:
+                # Calculate the position-based weight
+                position_weight = 1 - (index_position / text_length)*2
+
+                # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
+                score = (7 - rank if rank < 7 else 1) + position_weight*70
+                print(f"score: {score} for {keyword}")
+            else:
+                score = 7 - rank if rank < 7 else 1
 
             term_count[keyword] += score
 
             # If the keyword is a substring of a longer term, update the longest_terms dictionary
             if keyword in longest_terms:
-                if len(longest_terms[keyword]) < len(keyword) and len(keyword.split()) <= 2:
+                if (
+                    len(longest_terms[keyword]) < len(keyword)
+                    and len(keyword.split()) <= 2
+                ):
                     longest_terms[keyword] = keyword
             else:
                 if len(keyword.split()) <= 2:
@@ -237,11 +359,20 @@ def find_common_topics(keyword_dicts):
     most_common_terms = []
     for term, score in sorted_terms:
         if term in longest_terms:
-            most_common_terms.append(longest_terms[term])
+            is_subset = False
+            for i, common_term in enumerate(most_common_terms):
+                if term in common_term:
+                    is_subset = True
+                    break
+                elif common_term in term:
+                    most_common_terms[i] = term
+                    is_subset = True
+                    break
+
+            if not is_subset:
+                most_common_terms.append(longest_terms[term])
 
     return most_common_terms
-
-
 
 
 def remove_stopwords(text):
@@ -252,7 +383,7 @@ def remove_stopwords(text):
     filtered_tokens = [token.text for token in doc if not token.is_stop]
 
     # Join the filtered tokens to create the cleaned text
-    cleaned_text = ' '.join(filtered_tokens)
+    cleaned_text = " ".join(filtered_tokens)
 
     return cleaned_text
 
@@ -260,26 +391,33 @@ def remove_stopwords(text):
 def filter_keywords(keywords):
     filtered_keywords = []
     lowercase_keywords = set()
-    
+
     for keyword in keywords:
         # Create a spaCy token from the keyword
         token = nlp(keyword)[0]
-        
+
         # Find all sets of digits in the keyword
-        digit_sets = re.findall(r'\d+', keyword)
-        
+        digit_sets = re.findall(r"\d+", keyword)
+
         # Check if the keyword has only one set of digits with a maximum of 3 digits
-        valid_digit_rule = len(digit_sets) <= 1 and all(len(ds) <= 3 for ds in digit_sets)
-        
+        valid_digit_rule = len(digit_sets) <= 1 and all(
+            len(ds) <= 3 for ds in digit_sets
+        )
+
         # Check if the keyword contains a link
-        contains_link = 'http' in keyword.lower() or 'www' in keyword.lower()
+        contains_link = "http" in keyword.lower() or "www" in keyword.lower()
 
         # Check if the keyword is not already in the set
         not_duplicate = keyword.lower() not in lowercase_keywords
-        
-        if len(keyword) > 2 and not token.is_stop and valid_digit_rule and not contains_link and not_duplicate:
+
+        if (
+            len(keyword) > 2
+            and not token.is_stop
+            and valid_digit_rule
+            and not contains_link
+            and not_duplicate
+        ):
             filtered_keywords.append(keyword)
             lowercase_keywords.add(keyword.lower())
-            
-    return filtered_keywords
 
+    return filtered_keywords
