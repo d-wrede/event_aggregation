@@ -328,14 +328,16 @@ def find_common_topics(keyword_dicts, text):
         for rank, keyword in enumerate(keywords):
             # Find the index position of the keyword in the text
             index_position = text.find(keyword)
+            if keyword in ['Sensual Medicine Retreat','Vogesen']:
+                print()
 
             if index_position != -1:
                 # Calculate the position-based weight
                 position_weight = 1 - (index_position / text_length)*2
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
-                score = (7 - rank if rank < 7 else 1) + position_weight*70
-                #print(f"score: {score} for {keyword}")
+                score = (7 - rank if rank < 7 else 1) + position_weight*100
+                print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
 

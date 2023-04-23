@@ -23,7 +23,7 @@ json_filename = (
 )
 
 number_of_messages = 600
-first_letters = 50000
+first_letters = 500
 
 def main():
     # read messages from json file
@@ -115,7 +115,7 @@ def main():
 
     # sort keywords to (most probable) common topics
     for message in filtered_messages:
-        common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
+        common_topics = find_common_topics(message["topic_suggestions"], remove_stopwords(filter_string(message["message"][:first_letters])))
         common_topics = filter_keywords(common_topics)
         print("message: ", filter_string(message["message"][:first_letters]))
 
@@ -138,7 +138,7 @@ def main():
             message["topic_suggestions"]["common_topics"] = topic
         else:
             message["topic_suggestions"]["common_topics"] = common_topics
-        
+
             print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
             print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
             print("## later added ##")
@@ -147,18 +147,63 @@ def main():
             print("NMF: ", message["topic_suggestions"]["NMF"])
         print("common topics: ", common_topics)
         print("")
-    
+
 
     # sort messages by timestamp
     filtered_messages.sort(key=get_min_date)
 
     # topic extraction algorithm evaluation
     # compare and score algorithms according to their performance
-    with open("topics.txt", "w", encoding="utf-8") as f:
-        for message in filtered_messages:
-            f.write(f'### message ###\n{filter_string(message["message"])[:200]} \n---\n')
-            f.write(f'id: {message["id"]}')
-            f.write(f'topics: {message["topic_suggestions"]["common_topics"]}\n\n')
+    performance = {
+        "spacy_NER": 0,
+        "rake_keywords": 0,
+        "tf_IDF": 0,
+        "LDA": 0,
+        "NMF": 0,
+        "common_topics": 0,
+    }
+    with open("topics.json", "r", encoding="utf-8") as f:
+        evaluated_messages = json.load(f)
+    for message in filtered_messages:
+        # compare the common topics in 'topics' with the common topics in 'message'
+        found_message = False
+        # find the evaluated message
+        for evaluated_message in evaluated_messages:
+            #print("evaluated_message: ", evaluated_message)
+            if evaluated_message["id"] == message["id"]:
+                # get selected topics
+                evaluated_topics = evaluated_message["common_topics"]
+                found_message = True
+        if not found_message:
+            print("message not found: ", message["id"])
+            continue    
+        # step through each list in the dictionary
+        #print(message["topic_suggestions"])
+        # step through each list in the dictionary
+        for key, topics in message["topic_suggestions"].items():
+            #print("key: ", key)
+            # step through each topic in the list
+            for i, topic in enumerate(topics):
+                # step through each selected topic
+                for j, evaluated_topic in enumerate(evaluated_topics):
+                    if topic == evaluated_topic:
+                        performance[key] += 10 - i + 10 - j
+            #print("performance: ", performance)
+    
+    print("performance: ", performance)
+
+    
+    
+    # topiclist = []
+    # for message in filtered_messages:
+    #     topicdict = {
+    #         "message": message["message"][:200],
+    #         'id': message["id"],
+    #         'common_topics': message["topic_suggestions"]["common_topics"],
+    #     }
+    #     topiclist.append(topicdict)
+    # with open("topics.json", "r", encoding="utf-8") as f:
+    #     json.dump(topiclist, f, indent=4, ensure_ascii=False)
 
 
     # safe in readable format
