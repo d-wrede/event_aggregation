@@ -335,7 +335,7 @@ def find_common_topics(keyword_dicts, text):
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
                 score = (7 - rank if rank < 7 else 1) + position_weight*70
-                print(f"score: {score} for {keyword}")
+                #print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
 

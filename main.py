@@ -22,7 +22,7 @@ json_filename = (
     "/Users/danielwrede/Documents/read_event_messages/telegram_messages.json"
 )
 
-number_of_messages = 100
+number_of_messages = 600
 first_letters = 50000
 
 def main():
@@ -47,43 +47,43 @@ def main():
         # interpret dates by connecting date and time
         interpreted_dates = interpret_dates(time_matches)
 
-        # add timestamps to message dict
         message.setdefault("timestamps", [])
-        message["timestamps"] = interpreted_dates
+        if len(time_matches):
+            # add timestamps to message dict
+            message["timestamps"] = interpreted_dates
+            count_dates += 1
+            pass
 
         # compare dateparser with own parser results
         # dateparser_vs_ownparser(message, time_matches)
 
-        if time_matches is not None:
-            count_dates += 1
-
         # print message to file, if it contains a timestamp
-        if time_matches:
-            with open("file.txt", "a", encoding="utf-8") as f:
-                for match in time_matches:
-                    timestamp = ""
-                    if match["date1"]:
-                        timestamp += match["date1"].strftime("%Y-%m-%d")
-                    if match["clock1"]:
-                        timestamp += " " + match["clock1"].strftime("%H:%M")
-                    if match["date2"]:
-                        timestamp += " - " + match["date2"].strftime("%Y-%m-%d")
-                    if match["clock2"]:
-                        timestamp += " " + match["clock2"].strftime("%H:%M")
+        # if len(time_matches):
+        #     with open("file.txt", "a", encoding="utf-8") as f:
+        #         for match in time_matches:
+        #             timestamp = ""
+        #             if match["date1"]:
+        #                 timestamp += match["date1"].strftime("%Y-%m-%d")
+        #             if match["clock1"]:
+        #                 timestamp += " " + match["clock1"].strftime("%H:%M")
+        #             if match["date2"]:
+        #                 timestamp += " - " + match["date2"].strftime("%Y-%m-%d")
+        #             if match["clock2"]:
+        #                 timestamp += " " + match["clock2"].strftime("%H:%M")
 
-                    f.write(
-                        f'{match["matching_substring"]}: {timestamp}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n'
-                    )
-                f.write(str(filter_string(message["message"])) + "\n\n")
+        #             f.write(
+        #                 f'{match["matching_substring"]}: {timestamp}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n'
+        #             )
+        #         f.write(str(filter_string(message["message"])) + "\n\n")
 
     print(f"found {count_dates} dates in {len(messages)} messages")
 
 
     ### extract topic ###
-    # with for loop each message for spacy NER and RAKE
-    for message in messages[:number_of_messages]:
-        if "message" not in message or message["message"] == "":
-            continue
+    # with for loop each message with timestamp for spacy NER and RAKE
+    filtered_messages = [message for message in messages[:number_of_messages]
+        if "message" in message and message["message"] != "" and 'timestamps' in message and len(message['timestamps']) and isinstance(message['timestamps'], list) and message['timestamps'][0]['date1'] is not None]
+    for message in filtered_messages:
         cleaned_message = remove_stopwords(filter_string(message["message"][:first_letters]))
         place, topic, misc = spacy_ner(cleaned_message)
         message.setdefault("topic_suggestions", {})
@@ -95,11 +95,9 @@ def main():
 
     # all messages in one batch for tf-IDF, LDA and NMF topic modeling
     # Clean and preprocess the texts
-    sorted_messages = [message for message in messages[:number_of_messages]
-        if "message" in message and message["message"] != ""]
     cleaned_texts = [
         remove_stopwords(filter_string(message["message"][:first_letters]))
-        for message in sorted_messages
+        for message in filtered_messages
     ]
     # extract_topic(cleaned_texts)
     tf_IDF_keywords = tf_IDF(cleaned_texts)
@@ -108,19 +106,28 @@ def main():
 
     NMF_keywords = NMF_topic_modeling(cleaned_texts)
     NMF_keywords = sort_keywords_by_input_order(NMF_keywords, cleaned_texts)
-    for i, message in enumerate(sorted_messages):
+    for i, message in enumerate(filtered_messages):
         if "message" not in message or message["message"] == "":
             continue
         message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i])
         message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i])
         message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
 
-    for message in sorted_messages:
-        # if "message" not in message or message["message"] == "":
-        #     continue
+    # sort keywords to (most probable) common topics
+    for message in filtered_messages:
         common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
         common_topics = filter_keywords(common_topics)
         print("message: ", filter_string(message["message"][:first_letters]))
+
+        # print timestamps
+        timestamps = message["timestamps"]
+        for stamp in timestamps:
+            if stamp["date1"]: print("date1: ", stamp["date1"])
+            if stamp["clock1"]: print("clock1: ", stamp["clock1"])
+            if stamp["date2"]: print("date2: ", stamp["date2"])
+            if stamp["clock2"]: print("clock2: ", stamp["clock2"])
+            print("---")
+
         if 'Thema:' in message["message"]:
             index_position = message["message"].find('Thema:') + len('Thema:')
             newline_position = message["message"][index_position:].find('\n') + index_position
@@ -135,15 +142,44 @@ def main():
             print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
             print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
             print("## later added ##")
-
             print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
             print("LDA: ", message["topic_suggestions"]["LDA"])
             print("NMF: ", message["topic_suggestions"]["NMF"])
         print("common topics: ", common_topics)
         print("")
+    
 
     # sort messages by timestamp
-    messages.sort(key=get_min_date)
+    filtered_messages.sort(key=get_min_date)
+
+    # topic extraction algorithm evaluation
+    # compare and score algorithms according to their performance
+    with open("topics.txt", "w", encoding="utf-8") as f:
+        for message in filtered_messages:
+            f.write(f'### message ###\n{filter_string(message["message"])[:200]} \n---\n')
+            f.write(f'id: {message["id"]}')
+            f.write(f'topics: {message["topic_suggestions"]["common_topics"]}\n\n')
+
+
+    # safe in readable format
+    with open("file.txt", "w", encoding="utf-8") as f:
+        for message in filtered_messages:
+            f.write(f'### message ###\n{filter_string(message["message"])[:500]} \n---\n')
+            timestamps = message['timestamps']
+            for stamp in timestamps:
+                timestamp = ""
+                if stamp["date1"]:
+                    timestamp += stamp["date1"]
+                if stamp["clock1"]:
+                    timestamp += " " + stamp["clock1"]
+                if stamp["date2"]:
+                    timestamp += " - " + stamp["date2"]
+                if stamp["clock2"]:
+                    timestamp += " " + stamp["clock2"]
+
+                f.write(f'timestamp: {timestamp} \n')
+            # topics
+            f.write(f'topics: {message["topic_suggestions"]["common_topics"][:6]}\n\n')
 
     # save messages with timestamps
     with open("new_message_list.json", "w", encoding="utf-8") as f:
