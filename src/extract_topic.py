@@ -267,6 +267,8 @@ def find_common_topics(keyword_dicts, text):
             # Find the index position of the keyword in the text
             index_position = text.find(keyword)
 
+            
+
             if index_position != -1:
                 # Calculate the position-based weight
                 position_weight = (1 - (index_position / text_length)*1.5) * 100
@@ -277,15 +279,17 @@ def find_common_topics(keyword_dicts, text):
                 frequency_threshold1 = 0.6*10**6
                 frequency_threshold2 = 1.2*10**6
                 if frequency_dict[keyword] > frequency_threshold2:
-                    frequency_weight = -100 
+                    frequency_weight = -150 
                 elif frequency_dict[keyword] > frequency_threshold1:
-                    frequency_weight = -50
+                    frequency_weight = -75
                 else:
                     frequency_weight = 0
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
-                #print(f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency_weight: {frequency_weight}")
                 score = rankweight + algorithm_weight + position_weight + frequency_weight
+                if keyword in ['März', 'Berührung', 'tänzerisch', 'Muskeln', 'gesucht', 'Falls', 'com', 'Freude', 'kopiert']:
+                    print(f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency: {frequency_dict[keyword]}\nfrequency_weight: {frequency_weight}\nscore: {score}\n\n")
+                    pass
                             #print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1

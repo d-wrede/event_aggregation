@@ -87,7 +87,7 @@ def main():
     filtered_messages = [message for message in messages[:number_of_messages]
         if "message" in message and message["message"] != "" and 'timestamps' in message and len(message['timestamps']) and isinstance(message['timestamps'], list) and message['timestamps'][0]['date1'] is not None]
     for message in filtered_messages:
-        cleaned_message = remove_stopwords(filter_string(message["message"][:first_letters]))
+        cleaned_message = filter_string(message["message"][:first_letters])
         place, topic, misc = spacy_ner(cleaned_message)
         message.setdefault("topic_suggestions", {})
         message["topic_suggestions"]["spacy_NER"] = filter_keywords(
@@ -99,7 +99,7 @@ def main():
     # all messages in one batch for tf-IDF, LDA and NMF topic modeling
     # Clean and preprocess the texts
     cleaned_texts = [
-        remove_stopwords(filter_string(message["message"][:first_letters]))
+        filter_string(message["message"][:first_letters])
         for message in filtered_messages
     ]
     # extract_topic(cleaned_texts)
@@ -118,7 +118,7 @@ def main():
 
     # sort keywords to (most probable) common topics
     for message in filtered_messages:
-        common_topics = find_common_topics(message["topic_suggestions"], remove_stopwords(filter_string(message["message"][:first_letters])))
+        common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
         common_topics = filter_keywords(common_topics)
         print("message: ", filter_string(message["message"][:first_letters]))
 
