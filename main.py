@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from src.extract_timestamp import extract_timestamp, filter_string
 from src.organize_timestamps import (
     dateparser_vs_ownparser,
@@ -16,6 +17,8 @@ from src.extract_topic import (
     find_common_topics,
     remove_stopwords,
     filter_keywords,
+    evaluate_topic_extraction,
+    word_frequency,
 )
 
 json_filename = (
@@ -153,44 +156,20 @@ def main():
     filtered_messages.sort(key=get_min_date)
 
     # topic extraction algorithm evaluation
-    # compare and score algorithms according to their performance
-    performance = {
-        "spacy_NER": 0,
-        "rake_keywords": 0,
-        "tf_IDF": 0,
-        "LDA": 0,
-        "NMF": 0,
-        "common_topics": 0,
-    }
-    with open("topics.json", "r", encoding="utf-8") as f:
-        evaluated_messages = json.load(f)
-    for message in filtered_messages:
-        # compare the common topics in 'topics' with the common topics in 'message'
-        found_message = False
-        # find the evaluated message
-        for evaluated_message in evaluated_messages:
-            #print("evaluated_message: ", evaluated_message)
-            if evaluated_message["id"] == message["id"]:
-                # get selected topics
-                evaluated_topics = evaluated_message["common_topics"]
-                found_message = True
-        if not found_message:
-            print("message not found: ", message["id"])
-            continue    
-        # step through each list in the dictionary
-        #print(message["topic_suggestions"])
-        # step through each list in the dictionary
-        for key, topics in message["topic_suggestions"].items():
-            #print("key: ", key)
-            # step through each topic in the list
-            for i, topic in enumerate(topics):
-                # step through each selected topic
-                for j, evaluated_topic in enumerate(evaluated_topics):
-                    if topic == evaluated_topic:
-                        performance[key] += 10 - i + 10 - j
-            #print("performance: ", performance)
+    evaluate_topic_extraction(filtered_messages)
+
+    print("word frequency")
     
-    print("performance: ", performance)
+    # word_frequencies = []
+    # for message in filtered_messages:
+    #     word_frequencies.extend(word_frequency(message["topic_suggestions"]["common_topics"]))
+    
+    # Sort the combined list by frequency (descending order)
+    # sorted_list = sorted(word_frequencies, key=lambda x: x[1], reverse=True)
+
+    # Print the sorted list
+    # for word, freq in sorted_list:
+    #     print(f"{word}: {freq}")
 
     
     

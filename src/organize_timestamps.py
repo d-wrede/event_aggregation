@@ -42,8 +42,8 @@ def interpret_dates(time_matches):
             if not date['clock1']:
                 date['clock1'] = minclock['clock1'] or minclock['clock2']
                 date['clock2'] = maxclock['clock1'] or maxclock['clock2']
-    else:
-        print("no valid time matches found")
+    # else:
+    #     print("no valid time matches found")
 
     # serialize timestamps
     for date in interpreted_dates:

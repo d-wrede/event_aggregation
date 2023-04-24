@@ -14,14 +14,14 @@ from sklearn.decomposition import NMF
 from collections import defaultdict
 import re
 import spacy
-
+import json
 # Load spaCy's German model
 nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
-
 r = Rake(language="german")
-
+import pandas as pd
+import nltk
 
 def spacy_ner(message):
     doc = nlp(message)
@@ -243,101 +243,50 @@ def NMF_topic_modeling(cleaned_texts):
     return topics
 
 
-# def find_common_topics(keyword_dicts):
-#     term_count = defaultdict(float)
-#     longest_terms = {}
-#     for algorithm, keywords in keyword_dicts.items():
-#         for rank, keyword in enumerate(keywords):
-#             # Assign a score based on the order of the keyword (higher rank = lower score)
-#             score = 7 - rank if rank < 7 else 1
-
-#             term_count[keyword] += score
-
-#             # If the keyword is a substring of a longer term, update the longest_terms dictionary
-#             if keyword in longest_terms:
-#                 if (
-#                     len(longest_terms[keyword]) < len(keyword)
-#                     and len(keyword.split()) <= 2
-#                 ):
-#                     longest_terms[keyword] = keyword
-#             else:
-#                 if len(keyword.split()) <= 2:
-#                     longest_terms[keyword] = keyword
-
-#     # Sort the terms by their score in descending order
-#     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
-
-#     # Create a list of the most common terms, using the longest form of the term
-#     most_common_terms = []
-#     for term, score in sorted_terms:
-#         if term in longest_terms:
-#             most_common_terms.append(longest_terms[term])
-
-#     return most_common_terms
-
-# def find_common_topics(keyword_dicts):
-#     term_count = defaultdict(float)
-#     longest_terms = {}
-#     for algorithm, keywords in keyword_dicts.items():
-#         for rank, keyword in enumerate(keywords):
-#             # Assign a score based on the order of the keyword (higher rank = lower score)
-#             score = 7 - rank if rank < 7 else 1
-
-#             term_count[keyword] += score
-
-#             # If the keyword is a substring of a longer term, update the longest_terms dictionary
-#             if keyword in longest_terms:
-#                 if (
-#                     len(longest_terms[keyword]) < len(keyword)
-#                     and len(keyword.split()) <= 2
-#                 ):
-#                     longest_terms[keyword] = keyword
-#             else:
-#                 if len(keyword.split()) <= 2:
-#                     longest_terms[keyword] = keyword
-
-#     # Sort the terms by their score in descending order
-#     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
-
-#     # Create a list of the most common terms, using the longest form of the term
-#     most_common_terms = []
-#     for term, score in sorted_terms:
-#         if term in longest_terms:
-#             is_subset = False
-#             for i, common_term in enumerate(most_common_terms):
-#                 if term in common_term:
-#                     is_subset = True
-#                     break
-#                 elif common_term in term:
-#                     most_common_terms[i] = term
-#                     is_subset = True
-#                     break
-
-#             if not is_subset:
-#                 most_common_terms.append(longest_terms[term])
-
-#     return most_common_terms
-
-
 def find_common_topics(keyword_dicts, text):
     term_count = defaultdict(float)
     longest_terms = {}
     text_length = len(text)
+    weights = {'spacy_NER': 449, 'rake_keywords': 580, 'tf_IDF': 1264, 'LDA': 250, 'NMF': 829, 'common_topics': 1891}
+    # using a frequency dictionary to store the frequency of each word due to timing issues
+    frequency_dict = {}
+
+    # Exclude 'common_topics' from the calculation
+    weights_without_common_topics = {k: v for k, v in weights.items() if k != "common_topics"}
+
+    # Calculate the average
+    average_weights = sum(weights_without_common_topics.values()) / len(weights_without_common_topics)
 
     for algorithm, keywords in keyword_dicts.items():
+        algorithm_weight = (weights[algorithm] / average_weights) * 20
+        # ensure to only search for keywords that are not already in the frequency dictionary
+        new_keywords = [key for key in keywords if key not in frequency_dict]
+        frequency_dict.update(word_frequency(new_keywords))
+
         for rank, keyword in enumerate(keywords):
             # Find the index position of the keyword in the text
             index_position = text.find(keyword)
-            if keyword in ['Sensual Medicine Retreat','Vogesen']:
-                print()
 
             if index_position != -1:
                 # Calculate the position-based weight
-                position_weight = 1 - (index_position / text_length)*2
+                position_weight = (1 - (index_position / text_length)*1.5) * 100
+                highest = 35
+                rankweight = (highest - rank if rank < highest else 1) * 2
+
+                # Calculate the frequency-based weight
+                frequency_threshold1 = 0.6*10**6
+                frequency_threshold2 = 1.2*10**6
+                if frequency_dict[keyword] > frequency_threshold2:
+                    frequency_weight = -100 
+                elif frequency_dict[keyword] > frequency_threshold1:
+                    frequency_weight = -50
+                else:
+                    frequency_weight = 0
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
-                score = (7 - rank if rank < 7 else 1) + position_weight*100
-                print(f"score: {score} for {keyword}")
+                #print(f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency_weight: {frequency_weight}")
+                score = rankweight + algorithm_weight + position_weight #+ frequency_weight
+                            #print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
 
@@ -350,10 +299,10 @@ def find_common_topics(keyword_dicts, text):
                     and len(keyword.split()) <= 2
                 ):
                     longest_terms[keyword] = keyword
-            else:
-                if len(keyword.split()) <= 2:
-                    longest_terms[keyword] = keyword
+            elif len(keyword.split()) <= 2:
+                longest_terms[keyword] = keyword
 
+    print("term_count: ", term_count)
     # Sort the terms by their score in descending order
     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
 
@@ -384,10 +333,7 @@ def remove_stopwords(text):
     # Remove stop words and create a list of filtered tokens
     filtered_tokens = [token.text for token in doc if not token.is_stop]
 
-    # Join the filtered tokens to create the cleaned text
-    cleaned_text = " ".join(filtered_tokens)
-
-    return cleaned_text
+    return " ".join(filtered_tokens)
 
 
 def filter_keywords(keywords):
@@ -423,3 +369,100 @@ def filter_keywords(keywords):
             lowercase_keywords.add(keyword.lower())
 
     return filtered_keywords
+
+
+def evaluate_topic_extraction(filtered_messages):
+    """ compare and score algorithms according to their performance"""
+    # create performance dictionary to store the scores
+    performance = {
+        "spacy_NER": 0,
+        "rake_keywords": 0,
+        "tf_IDF": 0,
+        "LDA": 0,
+        "NMF": 0,
+        "common_topics": 0,
+    }
+    # load the evaluated messages
+    with open("topics.json", "r", encoding="utf-8") as f:
+        evaluated_messages = json.load(f)
+
+    # step through each message and find the score
+    for message in filtered_messages:
+        
+        # find the respective evaluated message
+        found_message = False
+        for evaluated_message in evaluated_messages:
+            if evaluated_message["id"] == message["id"]:
+                # get selected topics
+                evaluated_topics = evaluated_message["common_topics"]
+                found_message = True
+
+        if not found_message:
+            print("message not found: ", message["id"])
+            continue
+        
+        # compare the common topics in 'topics' with the common topics in 'message'
+        # step through each list in the dictionary
+        for key, topics in message["topic_suggestions"].items():
+            # step through each topic in the list
+            for i, topic in enumerate(topics):
+                # step through each selected topic
+                for j, evaluated_topic in enumerate(evaluated_topics):
+                    if topic == evaluated_topic:
+                        score = 30 - i - j
+                        performance[key] += score
+                        if score < 0:
+                            print("score < 0: ", score)
+    print("performance: ", performance)
+
+
+# Load a frequency list of German words
+df = pd.read_csv('decow_wordfreq_cistem.csv', index_col=['word'])
+print("loaded df")
+# Filter the DataFrame to only include rows with a frequency above 600,000
+# filtered_df = df[df['freq'] > 600000]
+
+# # Save the filtered DataFrame to a new CSV file
+# filtered_df.to_csv('filtered_decow_wordfreq_cistem.csv')
+# print("saved filtered df")
+
+# # Calculate the number of words in the filtered DataFrame and the number of words that have been filtered out
+# num_words_filtered = len(filtered_df)
+# num_words_filtered_out = len(df) - num_words_filtered
+
+# print(f"Number of words in the filtered DataFrame: {num_words_filtered}")
+# print(f"Number of words filtered out: {num_words_filtered_out}")
+
+# Convert DataFrame to a dictionary
+word_freq_dict = df['freq'].to_dict()
+print("converted df to dict")
+
+def word_frequency(word_list):
+    stemmer = nltk.stem.Cistem()
+
+    # Define a function to categorize German words based on frequency
+    def german_word_frequency(word):
+        try:
+            stemmed_word = stemmer.stem(word.lower())
+            freq = word_freq_dict.get(stemmed_word)
+        except Exception as e:
+            print(f"Error stemming the word '{word}': {e}")
+            freq = None
+
+        if freq is None:
+            freq = word_freq_dict.get(word.lower(), 0)
+        return freq
+
+    # Process each entry in the word_list
+    def process_entry(entry):
+        words = entry.split()
+        word_frequencies = [german_word_frequency(word) for word in words]
+
+        # Use the lowest frequency of individual words
+        combined_frequency = min(word_frequencies)
+
+        return combined_frequency
+
+    entry_frequencies = {entry: process_entry(entry) for entry in word_list}
+
+    return entry_frequencies
