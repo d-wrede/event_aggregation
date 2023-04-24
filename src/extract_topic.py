@@ -285,7 +285,7 @@ def find_common_topics(keyword_dicts, text):
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
                 #print(f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency_weight: {frequency_weight}")
-                score = rankweight + algorithm_weight + position_weight #+ frequency_weight
+                score = rankweight + algorithm_weight + position_weight + frequency_weight
                             #print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
@@ -417,7 +417,7 @@ def evaluate_topic_extraction(filtered_messages):
 
 
 # Load a frequency list of German words
-df = pd.read_csv('decow_wordfreq_cistem.csv', index_col=['word'])
+df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
 print("loaded df")
 # Filter the DataFrame to only include rows with a frequency above 600,000
 # filtered_df = df[df['freq'] > 600000]
