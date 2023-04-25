@@ -39,7 +39,7 @@ def spacy_ner(message):
     return place, topic, misc
 
 
-def rake_keywords(message, max_length=3):
+def rake(message, max_length=3):
     r.extract_keywords_from_text(message)
     scored_keywords = r.get_ranked_phrases_with_scores()
 
@@ -250,6 +250,8 @@ def find_common_topics(keyword_dicts, text):
     weights = {'spacy_NER': 449, 'rake_keywords': 580, 'tf_IDF': 1264, 'LDA': 250, 'NMF': 829, 'common_topics': 1891}
     # using a frequency dictionary to store the frequency of each word due to timing issues
     frequency_dict = {}
+    word_freq_dict = load_word_freq_dict()
+
 
     # Exclude 'common_topics' from the calculation
     weights_without_common_topics = {k: v for k, v in weights.items() if k != "common_topics"}
@@ -261,7 +263,7 @@ def find_common_topics(keyword_dicts, text):
         algorithm_weight = (weights[algorithm] / average_weights) * 20
         # ensure to only search for keywords that are not already in the frequency dictionary
         new_keywords = [key for key in keywords if key not in frequency_dict]
-        frequency_dict.update(word_frequency(new_keywords))
+        frequency_dict.update(word_frequency(new_keywords, word_freq_dict))
 
         for rank, keyword in enumerate(keywords):
             # Find the index position of the keyword in the text
@@ -420,9 +422,8 @@ def evaluate_topic_extraction(filtered_messages):
     print("performance: ", performance)
 
 
-# Load a frequency list of German words
-df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
-print("loaded df")
+
+
 # Filter the DataFrame to only include rows with a frequency above 600,000
 # filtered_df = df[df['freq'] > 600000]
 
@@ -438,10 +439,14 @@ print("loaded df")
 # print(f"Number of words filtered out: {num_words_filtered_out}")
 
 # Convert DataFrame to a dictionary
-word_freq_dict = df['freq'].to_dict()
-print("converted df to dict")
 
-def word_frequency(word_list):
+def load_word_freq_dict():
+    """Load the word frequency dictionary"""
+    df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
+    return df['freq'].to_dict()
+
+
+def word_frequency(word_list, word_freq_dict):
     stemmer = nltk.stem.Cistem()
 
     # Define a function to categorize German words based on frequency
