@@ -2,3 +2,7 @@ config.ini
 *.json
 *.txt
 decow_wordfreq_cistem.csv
+high_frequency_decow_wordfreq_cistem.csv
+*.csv
+*.pyc
+/old

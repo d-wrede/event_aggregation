@@ -15,14 +15,17 @@ from collections import defaultdict
 import re
 import spacy
 import json
+
 # Load spaCy's German model
 nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
+
 r = Rake(language="german")
 import pandas as pd
 import nltk
 from src.extract_timestamp import filter_string
+
 
 def spacy_ner(message):
     doc = nlp(message)
@@ -248,17 +251,27 @@ def find_common_topics(keyword_dicts, text):
     term_count = defaultdict(float)
     longest_terms = {}
     text_length = len(text)
-    weights = {'spacy_NER': 449, 'rake_keywords': 580, 'tf_IDF': 1264, 'LDA': 250, 'NMF': 829, 'common_topics': 1891}
+    weights = {
+        "spacy_NER": 449,
+        "rake_keywords": 580,
+        "tf_IDF": 1264,
+        "LDA": 250,
+        "NMF": 829,
+        "common_topics": 1891,
+    }
     # using a frequency dictionary to store the frequency of each word due to timing issues
     frequency_dict = {}
     word_freq_dict = load_word_freq_dict()
 
-
     # Exclude 'common_topics' from the calculation
-    weights_without_common_topics = {k: v for k, v in weights.items() if k != "common_topics"}
+    weights_without_common_topics = {
+        k: v for k, v in weights.items() if k != "common_topics"
+    }
 
     # Calculate the average
-    average_weights = sum(weights_without_common_topics.values()) / len(weights_without_common_topics)
+    average_weights = sum(weights_without_common_topics.values()) / len(
+        weights_without_common_topics
+    )
 
     for algorithm, keywords in keyword_dicts.items():
         algorithm_weight = (weights[algorithm] / average_weights) * 20
@@ -270,30 +283,42 @@ def find_common_topics(keyword_dicts, text):
             # Find the index position of the keyword in the text
             index_position = text.find(keyword)
 
-            
-
             if index_position != -1:
                 # Calculate the position-based weight
-                position_weight = (1 - (index_position / text_length)*1.5) * 100
+                position_weight = (1 - (index_position / text_length) * 1.5) * 100
                 highest = 35
                 rankweight = (highest - rank if rank < highest else 1) * 2
 
                 # Calculate the frequency-based weight
-                frequency_threshold1 = 0.6*10**6
-                frequency_threshold2 = 1.2*10**6
+                frequency_threshold1 = 0.6 * 10**6
+                frequency_threshold2 = 1.2 * 10**6
                 if frequency_dict[keyword] > frequency_threshold2:
-                    frequency_weight = -150 
+                    frequency_weight = -150
                 elif frequency_dict[keyword] > frequency_threshold1:
                     frequency_weight = -75
                 else:
                     frequency_weight = 0
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
-                score = rankweight + algorithm_weight + position_weight + frequency_weight
-                if keyword in ['März', 'Berührung', 'tänzerisch', 'Muskeln', 'gesucht', 'Falls', 'com', 'Freude', 'kopiert']:
-                    print(f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency: {frequency_dict[keyword]}\nfrequency_weight: {frequency_weight}\nscore: {score}\n\n")
+                score = (
+                    rankweight + algorithm_weight + position_weight + frequency_weight
+                )
+                if keyword in [
+                    "März",
+                    "Berührung",
+                    "tänzerisch",
+                    "Muskeln",
+                    "gesucht",
+                    "Falls",
+                    "com",
+                    "Freude",
+                    "kopiert",
+                ]:
+                    print(
+                        f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency: {frequency_dict[keyword]}\nfrequency_weight: {frequency_weight}\nscore: {score}\n\n"
+                    )
                     pass
-                            #print(f"score: {score} for {keyword}")
+                    # print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
 
@@ -345,34 +370,40 @@ def remove_stopwords(text):
 
 def check_thema(message):
     """catch the topic by 'Thema:' in message, if available"""
-    
-    if 'Thema:' in message["message"]:
-        index_position = message["message"].find('Thema:') + len('Thema:')
-        newline_position = message["message"][index_position:].find('\n') + index_position
+
+    if "Thema:" in message["message"]:
+        index_position = message["message"].find("Thema:") + len("Thema:")
+        newline_position = (
+            message["message"][index_position:].find("\n") + index_position
+        )
         if newline_position == -1:
             newline_position = len(message["message"])
         topic = message["message"][index_position:newline_position].strip()
-        print('the topic is: ', topic)
+        print("the topic is: ", topic)
         return topic
     else:
         return None
 
 
 def get_thema_topic(message):
-    if 'Thema:' in message["message"]:
-        index_position = message["message"].find('Thema:') + len('Thema:')
-        newline_position = message["message"][index_position:].find('\n') + index_position
+    if "Thema:" in message["message"]:
+        index_position = message["message"].find("Thema:") + len("Thema:")
+        newline_position = (
+            message["message"][index_position:].find("\n") + index_position
+        )
         if newline_position == -1:
             newline_position = len(message["message"])
         return message["message"][index_position:newline_position].strip()
     return None
 
 
-def set_thema_in_messages(filtered_messages):
+def check_if_topic(filtered_messages):
     for message in filtered_messages:
-        if 'Thema:' in message["message"]:
-            index_position = message["message"].find('Thema:') + len('Thema:')
-            newline_position = message["message"][index_position:].find('\n') + index_position
+        if "Thema:" in message["message"]:
+            index_position = message["message"].find("Thema:") + len("Thema:")
+            newline_position = (
+                message["message"][index_position:].find("\n") + index_position
+            )
             if newline_position == -1:
                 newline_position = len(message["message"])
             topic = message["message"][index_position:newline_position].strip()
@@ -413,6 +444,7 @@ def filter_keywords(keywords):
 
     return filtered_keywords
 
+
 # Filter the DataFrame to only include rows with a frequency above 600,000
 # filtered_df = df[df['freq'] > 600000]
 
@@ -430,8 +462,8 @@ def filter_keywords(keywords):
 
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
-    df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
-    return df['freq'].to_dict()
+    df = pd.read_csv("high_frequency_decow_wordfreq_cistem.csv", index_col=["word"])
+    return df["freq"].to_dict()
 
 
 def word_frequency(word_list, word_freq_dict):
@@ -473,7 +505,7 @@ def extract_keywords(cleaned_texts):
         place, topic, misc = spacy_ner(cleaned_message)
         spacy_keywords.append(place + topic + misc)
         rake_keywords.append(rake(cleaned_message))
-    
+
     # TF-IDF, LDA, NMF
     tf_IDF_keywords = tf_IDF(cleaned_texts)
     LDA_keywords = LDA_topic_modeling(cleaned_texts)
@@ -484,28 +516,42 @@ def extract_keywords(cleaned_texts):
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
 
 
-def store_keywords_in_messages(filtered_messages, spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords, cleaned_texts_with_indices):
+def store_keywords_in_messages(
+    filtered_messages,
+    spacy_keywords,
+    rake_keywords,
+    tf_IDF_keywords,
+    LDA_keywords,
+    NMF_keywords,
+    cleaned_texts_with_indices,
+):
     for i, (message_idx, _) in enumerate(cleaned_texts_with_indices):
         message = filtered_messages[message_idx]
         message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i])
-        message["topic_suggestions"]["rake_keywords"] = filter_keywords(rake_keywords[i])
+        message["topic_suggestions"]["rake_keywords"] = filter_keywords(
+            rake_keywords[i]
+        )
         message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i])
         message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i])
         message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
 
 
-
 def extract_common_topics(filtered_messages, first_letters):
+    """Extract common topics, using the function 'find_common_topics',
+    from the messages and store them in the message dictionaries."""
     for message in filtered_messages:
         if "common_topics" in message["topic_suggestions"]:
             continue
-        
+
         print("message: ", filter_string(message["message"][:first_letters]))
-        
-        common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
+
+        common_topics = find_common_topics(
+            message["topic_suggestions"],
+            filter_string(message["message"][:first_letters]),
+        )
         common_topics = filter_keywords(common_topics)
         message["topic_suggestions"]["common_topics"] = common_topics
-        
+
         print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
         print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
         print("## later added ##")
@@ -516,10 +562,14 @@ def extract_common_topics(filtered_messages, first_letters):
         # print timestamps
         timestamps = message["timestamps"]
         for stamp in timestamps:
-            if stamp["date1"]: print("date1: ", stamp["date1"])
-            if stamp["clock1"]: print("clock1: ", stamp["clock1"])
-            if stamp["date2"]: print("date2: ", stamp["date2"])
-            if stamp["clock2"]: print("clock2: ", stamp["clock2"])
+            if stamp["date1"]:
+                print("date1: ", stamp["date1"])
+            if stamp["clock1"]:
+                print("clock1: ", stamp["clock1"])
+            if stamp["date2"]:
+                print("date2: ", stamp["date2"])
+            if stamp["clock2"]:
+                print("clock2: ", stamp["clock2"])
             print("---")
 
         print("common topics: ", common_topics)
@@ -527,7 +577,7 @@ def extract_common_topics(filtered_messages, first_letters):
 
 
 def evaluate_topic_extraction(filtered_messages):
-    """ compare and score algorithms according to their performance"""
+    """compare and score algorithms according to their performance"""
     # create performance dictionary to store the scores
     performance = {
         "spacy_NER": 0,
@@ -543,7 +593,6 @@ def evaluate_topic_extraction(filtered_messages):
 
     # step through each message and find the score
     for message in filtered_messages:
-        
         # find the respective evaluated message
         found_message = False
         for evaluated_message in evaluated_messages:
@@ -555,7 +604,7 @@ def evaluate_topic_extraction(filtered_messages):
         if not found_message:
             print("message not found: ", message["id"])
             continue
-        
+
         # compare the common topics in 'topics' with the common topics in 'message'
         # step through each list in the dictionary
         for key, topics in message["topic_suggestions"].items():
@@ -569,3 +618,37 @@ def evaluate_topic_extraction(filtered_messages):
                         if score < 0:
                             print("score < 0: ", score)
     print("performance: ", performance)
+
+
+def extract_topic(filtered_messages, first_letters):
+    # add topic_suggestions key to each message
+    for message in filtered_messages:
+        message.setdefault("topic_suggestions", {})
+
+    check_if_topic(filtered_messages)
+
+    # Clean and preprocess the texts
+    cleaned_texts_with_indices = [
+        (idx, filter_string(message["message"][:first_letters]))
+        for idx, message in enumerate(filtered_messages)
+        if "common_topics" not in message["topic_suggestions"]
+    ]
+
+    # get keywords for each message
+    (
+        spacy_keywords,
+        rake_keywords,
+        tf_IDF_keywords,
+        LDA_keywords,
+        NMF_keywords,
+    ) = extract_keywords([text for _, text in cleaned_texts_with_indices])
+    store_keywords_in_messages(
+        filtered_messages,
+        spacy_keywords,
+        rake_keywords,
+        tf_IDF_keywords,
+        LDA_keywords,
+        NMF_keywords,
+        cleaned_texts_with_indices,
+    )
+    extract_common_topics(filtered_messages, first_letters)
