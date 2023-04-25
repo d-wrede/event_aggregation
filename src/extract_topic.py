@@ -22,6 +22,7 @@ from rake_nltk import Rake
 r = Rake(language="german")
 import pandas as pd
 import nltk
+from src.extract_timestamp import filter_string
 
 def spacy_ner(message):
     doc = nlp(message)
@@ -342,6 +343,42 @@ def remove_stopwords(text):
     return " ".join(filtered_tokens)
 
 
+def check_thema(message):
+    """catch the topic by 'Thema:' in message, if available"""
+    
+    if 'Thema:' in message["message"]:
+        index_position = message["message"].find('Thema:') + len('Thema:')
+        newline_position = message["message"][index_position:].find('\n') + index_position
+        if newline_position == -1:
+            newline_position = len(message["message"])
+        topic = message["message"][index_position:newline_position].strip()
+        print('the topic is: ', topic)
+        return topic
+    else:
+        return None
+
+
+def get_thema_topic(message):
+    if 'Thema:' in message["message"]:
+        index_position = message["message"].find('Thema:') + len('Thema:')
+        newline_position = message["message"][index_position:].find('\n') + index_position
+        if newline_position == -1:
+            newline_position = len(message["message"])
+        return message["message"][index_position:newline_position].strip()
+    return None
+
+
+def set_thema_in_messages(filtered_messages):
+    for message in filtered_messages:
+        if 'Thema:' in message["message"]:
+            index_position = message["message"].find('Thema:') + len('Thema:')
+            newline_position = message["message"][index_position:].find('\n') + index_position
+            if newline_position == -1:
+                newline_position = len(message["message"])
+            topic = message["message"][index_position:newline_position].strip()
+            message["topic_suggestions"]["common_topics"] = topic
+
+
 def filter_keywords(keywords):
     filtered_keywords = []
     lowercase_keywords = set()
@@ -375,6 +412,118 @@ def filter_keywords(keywords):
             lowercase_keywords.add(keyword.lower())
 
     return filtered_keywords
+
+# Filter the DataFrame to only include rows with a frequency above 600,000
+# filtered_df = df[df['freq'] > 600000]
+
+# # Save the filtered DataFrame to a new CSV file
+# filtered_df.to_csv('filtered_decow_wordfreq_cistem.csv')
+# print("saved filtered df")
+
+# # Calculate the number of words in the filtered DataFrame and the number of words that have been filtered out
+# num_words_filtered = len(filtered_df)
+# num_words_filtered_out = len(df) - num_words_filtered
+
+# print(f"Number of words in the filtered DataFrame: {num_words_filtered}")
+# print(f"Number of words filtered out: {num_words_filtered_out}")
+
+
+def load_word_freq_dict():
+    """Load the word frequency dictionary"""
+    df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
+    return df['freq'].to_dict()
+
+
+def word_frequency(word_list, word_freq_dict):
+    stemmer = nltk.stem.Cistem()
+
+    # Define a function to categorize German words based on frequency
+    def german_word_frequency(word):
+        try:
+            stemmed_word = stemmer.stem(word.lower())
+            freq = word_freq_dict.get(stemmed_word)
+        except Exception as e:
+            print(f"Error stemming the word '{word}': {e}")
+            freq = None
+
+        if freq is None:
+            freq = word_freq_dict.get(word.lower(), 0)
+        return freq
+
+    # Process each entry in the word_list
+    def process_entry(entry):
+        words = entry.split()
+        word_frequencies = [german_word_frequency(word) for word in words]
+
+        # Use the lowest frequency of individual words
+        combined_frequency = min(word_frequencies)
+
+        return combined_frequency
+
+    entry_frequencies = {entry: process_entry(entry) for entry in word_list}
+
+    return entry_frequencies
+
+
+def extract_keywords(cleaned_texts):
+    # spaCy NER and RAKE
+    spacy_keywords = []
+    rake_keywords = []
+    for cleaned_message in cleaned_texts:
+        place, topic, misc = spacy_ner(cleaned_message)
+        spacy_keywords.append(place + topic + misc)
+        rake_keywords.append(rake(cleaned_message))
+    
+    # TF-IDF, LDA, NMF
+    tf_IDF_keywords = tf_IDF(cleaned_texts)
+    LDA_keywords = LDA_topic_modeling(cleaned_texts)
+    LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
+    NMF_keywords = NMF_topic_modeling(cleaned_texts)
+    NMF_keywords = sort_keywords_by_input_order(NMF_keywords, cleaned_texts)
+
+    return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
+
+
+def store_keywords_in_messages(filtered_messages, spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords, cleaned_texts_with_indices):
+    for i, (message_idx, _) in enumerate(cleaned_texts_with_indices):
+        message = filtered_messages[message_idx]
+        message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i])
+        message["topic_suggestions"]["rake_keywords"] = filter_keywords(rake_keywords[i])
+        message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i])
+        message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i])
+        message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
+
+
+
+def extract_common_topics(filtered_messages, first_letters):
+    for message in filtered_messages:
+        if "common_topics" in message["topic_suggestions"]:
+            continue
+        
+        print("message: ", filter_string(message["message"][:first_letters]))
+        
+        common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
+        common_topics = filter_keywords(common_topics)
+        message["topic_suggestions"]["common_topics"] = common_topics
+        
+        print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
+        print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
+        print("## later added ##")
+        print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
+        print("LDA: ", message["topic_suggestions"]["LDA"])
+        print("NMF: ", message["topic_suggestions"]["NMF"])
+
+        # print timestamps
+        timestamps = message["timestamps"]
+        for stamp in timestamps:
+            if stamp["date1"]: print("date1: ", stamp["date1"])
+            if stamp["clock1"]: print("clock1: ", stamp["clock1"])
+            if stamp["date2"]: print("date2: ", stamp["date2"])
+            if stamp["clock2"]: print("clock2: ", stamp["clock2"])
+            print("---")
+
+        print("common topics: ", common_topics)
+        print("")
 
 
 def evaluate_topic_extraction(filtered_messages):
@@ -420,58 +569,3 @@ def evaluate_topic_extraction(filtered_messages):
                         if score < 0:
                             print("score < 0: ", score)
     print("performance: ", performance)
-
-
-
-
-# Filter the DataFrame to only include rows with a frequency above 600,000
-# filtered_df = df[df['freq'] > 600000]
-
-# # Save the filtered DataFrame to a new CSV file
-# filtered_df.to_csv('filtered_decow_wordfreq_cistem.csv')
-# print("saved filtered df")
-
-# # Calculate the number of words in the filtered DataFrame and the number of words that have been filtered out
-# num_words_filtered = len(filtered_df)
-# num_words_filtered_out = len(df) - num_words_filtered
-
-# print(f"Number of words in the filtered DataFrame: {num_words_filtered}")
-# print(f"Number of words filtered out: {num_words_filtered_out}")
-
-# Convert DataFrame to a dictionary
-
-def load_word_freq_dict():
-    """Load the word frequency dictionary"""
-    df = pd.read_csv('high_frequency_decow_wordfreq_cistem.csv', index_col=['word'])
-    return df['freq'].to_dict()
-
-
-def word_frequency(word_list, word_freq_dict):
-    stemmer = nltk.stem.Cistem()
-
-    # Define a function to categorize German words based on frequency
-    def german_word_frequency(word):
-        try:
-            stemmed_word = stemmer.stem(word.lower())
-            freq = word_freq_dict.get(stemmed_word)
-        except Exception as e:
-            print(f"Error stemming the word '{word}': {e}")
-            freq = None
-
-        if freq is None:
-            freq = word_freq_dict.get(word.lower(), 0)
-        return freq
-
-    # Process each entry in the word_list
-    def process_entry(entry):
-        words = entry.split()
-        word_frequencies = [german_word_frequency(word) for word in words]
-
-        # Use the lowest frequency of individual words
-        combined_frequency = min(word_frequencies)
-
-        return combined_frequency
-
-    entry_frequencies = {entry: process_entry(entry) for entry in word_list}
-
-    return entry_frequencies

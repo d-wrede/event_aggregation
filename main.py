@@ -19,7 +19,13 @@ from src.extract_topic import (
     filter_keywords,
     evaluate_topic_extraction,
     word_frequency,
+    extract_keywords, store_keywords_in_messages, extract_common_topics,
+    check_thema,
+    get_thema_topic,
+    set_thema_in_messages
 )
+
+
 
 json_filename = (
     "/Users/danielwrede/Documents/read_event_messages/telegram_messages.json"
@@ -86,109 +92,31 @@ def main():
     # list messages with timestamps and message text
     filtered_messages = [message for message in messages[:number_of_messages]
         if "message" in message and message["message"] != "" and 'timestamps' in message and len(message['timestamps']) and isinstance(message['timestamps'], list) and message['timestamps'][0]['date1'] is not None]
+
     # add topic_suggestions key to each message
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
 
+    set_thema_in_messages(filtered_messages)
+
     # Clean and preprocess the texts
-    cleaned_texts = [
-        filter_string(message["message"][:first_letters])
-        for message in filtered_messages
+    cleaned_texts_with_indices = [
+    (idx, filter_string(message["message"][:first_letters]))
+    for idx, message in enumerate(filtered_messages)
+    if "common_topics" not in message["topic_suggestions"]
     ]
+
     # get keywords for each message
-    # spaCy NER and RAKE
-    spacy_keywords = []
-    rake_keywords = []
-    for cleaned_message in cleaned_texts:
-        place, topic, misc = spacy_ner(cleaned_message)
-        spacy_keywords.append(place + topic + misc)
-        rake_keywords.append(rake(cleaned_message))
-    
-    # TF-IDF, LDA, NMF
-    tf_IDF_keywords = tf_IDF(cleaned_texts)
-    LDA_keywords = LDA_topic_modeling(cleaned_texts)
-    LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
-    NMF_keywords = NMF_topic_modeling(cleaned_texts)
-    NMF_keywords = sort_keywords_by_input_order(NMF_keywords, cleaned_texts)
-    
-    # store keywords in filtered_messages dict
-    for i, message in enumerate(filtered_messages):
-        message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i])
-        message["topic_suggestions"]["rake_keywords"] = filter_keywords(rake_keywords[i])
-        message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i])
-        message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i])
-        message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
-
-    # sort keywords to (most probable) common topics
-    for message in filtered_messages:
-        print("message: ", filter_string(message["message"][:first_letters]))
-        # catch the topic by 'Thema:' in message, if available
-        if 'Thema:' in message["message"]:
-            index_position = message["message"].find('Thema:') + len('Thema:')
-            newline_position = message["message"][index_position:].find('\n') + index_position
-            if newline_position == -1:
-                newline_position = len(message["message"])
-            topic = message["message"][index_position:newline_position].strip()
-            print('the topic is: ', topic)
-            message["topic_suggestions"]["common_topics"] = topic
-        else:
-            common_topics = find_common_topics(message["topic_suggestions"], filter_string(message["message"][:first_letters]))
-            common_topics = filter_keywords(common_topics)
-            message["topic_suggestions"]["common_topics"] = common_topics
-
-            print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
-            print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
-            print("## later added ##")
-            print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
-            print("LDA: ", message["topic_suggestions"]["LDA"])
-            print("NMF: ", message["topic_suggestions"]["NMF"])
-
-        # print timestamps
-        timestamps = message["timestamps"]
-        for stamp in timestamps:
-            if stamp["date1"]: print("date1: ", stamp["date1"])
-            if stamp["clock1"]: print("clock1: ", stamp["clock1"])
-            if stamp["date2"]: print("date2: ", stamp["date2"])
-            if stamp["clock2"]: print("clock2: ", stamp["clock2"])
-            print("---")
-
-        print("common topics: ", common_topics)
-        print("")
-
+    spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords = extract_keywords([text for _, text in cleaned_texts_with_indices])
+    store_keywords_in_messages(filtered_messages, spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords, cleaned_texts_with_indices)
+    extract_common_topics(filtered_messages, first_letters)
 
     # sort messages by timestamp
     filtered_messages.sort(key=get_min_date)
 
     # topic extraction algorithm evaluation
     evaluate_topic_extraction(filtered_messages)
-
-    print("word frequency")
     
-    # word_frequencies = []
-    # for message in filtered_messages:
-    #     word_frequencies.extend(word_frequency(message["topic_suggestions"]["common_topics"]))
-    
-    # Sort the combined list by frequency (descending order)
-    # sorted_list = sorted(word_frequencies, key=lambda x: x[1], reverse=True)
-
-    # Print the sorted list
-    # for word, freq in sorted_list:
-    #     print(f"{word}: {freq}")
-
-    
-    
-    # topiclist = []
-    # for message in filtered_messages:
-    #     topicdict = {
-    #         "message": message["message"][:200],
-    #         'id': message["id"],
-    #         'common_topics': message["topic_suggestions"]["common_topics"],
-    #     }
-    #     topiclist.append(topicdict)
-    # with open("topics.json", "r", encoding="utf-8") as f:
-    #     json.dump(topiclist, f, indent=4, ensure_ascii=False)
-
-
     # safe in readable format
     with open("file.txt", "w", encoding="utf-8") as f:
         for message in filtered_messages:
