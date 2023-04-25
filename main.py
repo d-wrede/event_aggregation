@@ -29,10 +29,11 @@ from src.extract_topic import (
 )
 
 
-json_filename = "/Users/danielwrede/Documents/read_event_messages/cleaned_tel_mes.json"
+json_filename = "/Users/danielwrede/Documents/read_event_messages/telegram_messages.json"
 
 number_of_messages = 600
 first_letters = 500
+optimization_switch = False
 
 
 def main():
@@ -57,33 +58,11 @@ def main():
         # interpret dates by connecting date and time
         interpreted_dates = interpret_dates(time_matches)
 
-        if len(time_matches):
+        if len(interpreted_dates):
             # add timestamps to message dict
             message.setdefault("timestamps", [])
             message["timestamps"] = interpreted_dates
             count_dates += 1
-
-        # compare dateparser with own parser results
-        # dateparser_vs_ownparser(message, time_matches)
-
-        # print message to file, if it contains a timestamp
-        # if len(time_matches):
-        #     with open("file.txt", "a", encoding="utf-8") as f:
-        #         for match in time_matches:
-        #             timestamp = ""
-        #             if match["date1"]:
-        #                 timestamp += match["date1"].strftime("%Y-%m-%d")
-        #             if match["clock1"]:
-        #                 timestamp += " " + match["clock1"].strftime("%H:%M")
-        #             if match["date2"]:
-        #                 timestamp += " - " + match["date2"].strftime("%Y-%m-%d")
-        #             if match["clock2"]:
-        #                 timestamp += " " + match["clock2"].strftime("%H:%M")
-
-        #             f.write(
-        #                 f'{match["matching_substring"]}: {timestamp}, priority: {match["priority"]}, pattern_type: {match["pattern_type"]}\n'
-        #             )
-        #         f.write(str(filter_string(message["message"])) + "\n\n")
 
     print(f"found {count_dates} dates in {len(messages)} messages")
 
@@ -92,48 +71,55 @@ def main():
 
     # list messages with timestamps and message text
     filtered_messages = [
-        message
-        for message in messages[:number_of_messages]
-        if message.get("message", "") != ""
-        and (
-            isinstance(message.get("timestamps"), list)
-            and len(message["timestamps"]) > 0
-            and message["timestamps"][0].get("date1") is not None
-        )
+    message
+    for message in messages[:number_of_messages]
+    if 'timestamps' in message
     ]
 
     ### extract topic ###
     extract_topic(filtered_messages, first_letters)
 
+    filtered_messages_with_selected_keys = [
+    {key: message[key] for key in ('message', 'topic_suggestions')}
+    for message in filtered_messages
+    ]
+
     # topic extraction algorithm evaluation
-    evaluate_topic_extraction(filtered_messages)
+    performance = evaluate_topic_extraction(filtered_messages)
+    print("performance: ", performance)
+
+    for message in filtered_messages_with_selected_keys:
+        message['topic_suggestions'].setdefault("chosen_topics", [])
 
     # safe in readable format
-    with open("file.txt", "w", encoding="utf-8") as f:
-        for message in filtered_messages:
-            f.write(
-                f'### message ###\n{filter_string(message["message"])[:500]} \n---\n'
-            )
-            timestamps = message["timestamps"]
-            for stamp in timestamps:
-                timestamp = ""
-                if stamp["date1"]:
-                    timestamp += stamp["date1"]
-                if stamp["clock1"]:
-                    timestamp += " " + stamp["clock1"]
-                if stamp["date2"]:
-                    timestamp += " - " + stamp["date2"]
-                if stamp["clock2"]:
-                    timestamp += " " + stamp["clock2"]
+    if not optimization_switch:
+        with open("file.txt", "w", encoding="utf-8") as f:
+            for message in filtered_messages:
+                f.write(
+                    f'### message ###\n{filter_string(message["message"])[:500]} \n---\n'
+                )
+                timestamps = message["timestamps"]
+                for stamp in timestamps:
+                    timestamp = ""
+                    if stamp["date1"]:
+                        timestamp += stamp["date1"]
+                    if stamp["clock1"]:
+                        timestamp += " " + stamp["clock1"]
+                    if stamp["date2"]:
+                        timestamp += " - " + stamp["date2"]
+                    if stamp["clock2"]:
+                        timestamp += " " + stamp["clock2"]
 
-                f.write(f"timestamp: {timestamp} \n")
-            # topics
-            f.write(f'topics: {message["topic_suggestions"]["common_topics"][:6]}\n\n')
+                    f.write(f"timestamp: {timestamp} \n")
+                # topics
+                f.write(f'topics: {message["topic_suggestions"]["common_topics"][:6]}\n\n')
 
-    # save messages with timestamps
-    with open("new_message_list.json", "w", encoding="utf-8") as f:
-        json.dump(messages, f, indent=4, ensure_ascii=False)
+        # save messages with timestamps
+        with open("new_message_list.json", "w", encoding="utf-8") as f:
+            json.dump(filtered_messages_with_selected_keys, f, indent=4, ensure_ascii=False)
+    
+    return performance
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" or optimization_switch:
     main()

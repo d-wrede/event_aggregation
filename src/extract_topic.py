@@ -576,6 +576,40 @@ def extract_common_topics(filtered_messages, first_letters):
         print("")
 
 
+def extract_topic(filtered_messages, first_letters):
+    # add topic_suggestions key to each message
+    for message in filtered_messages:
+        message.setdefault("topic_suggestions", {})
+
+    check_if_topic(filtered_messages)
+
+    # Clean and preprocess the texts
+    cleaned_texts_with_indices = [
+        (idx, filter_string(message["message"][:first_letters]))
+        for idx, message in enumerate(filtered_messages)
+        if "common_topics" not in message["topic_suggestions"]
+    ]
+
+    # get keywords for each message
+    (
+        spacy_keywords,
+        rake_keywords,
+        tf_IDF_keywords,
+        LDA_keywords,
+        NMF_keywords,
+    ) = extract_keywords([text for _, text in cleaned_texts_with_indices])
+    store_keywords_in_messages(
+        filtered_messages,
+        spacy_keywords,
+        rake_keywords,
+        tf_IDF_keywords,
+        LDA_keywords,
+        NMF_keywords,
+        cleaned_texts_with_indices,
+    )
+    extract_common_topics(filtered_messages, first_letters)
+
+
 def evaluate_topic_extraction(filtered_messages):
     """compare and score algorithms according to their performance"""
     # create performance dictionary to store the scores
@@ -617,38 +651,4 @@ def evaluate_topic_extraction(filtered_messages):
                         performance[key] += score
                         if score < 0:
                             print("score < 0: ", score)
-    print("performance: ", performance)
-
-
-def extract_topic(filtered_messages, first_letters):
-    # add topic_suggestions key to each message
-    for message in filtered_messages:
-        message.setdefault("topic_suggestions", {})
-
-    check_if_topic(filtered_messages)
-
-    # Clean and preprocess the texts
-    cleaned_texts_with_indices = [
-        (idx, filter_string(message["message"][:first_letters]))
-        for idx, message in enumerate(filtered_messages)
-        if "common_topics" not in message["topic_suggestions"]
-    ]
-
-    # get keywords for each message
-    (
-        spacy_keywords,
-        rake_keywords,
-        tf_IDF_keywords,
-        LDA_keywords,
-        NMF_keywords,
-    ) = extract_keywords([text for _, text in cleaned_texts_with_indices])
-    store_keywords_in_messages(
-        filtered_messages,
-        spacy_keywords,
-        rake_keywords,
-        tf_IDF_keywords,
-        LDA_keywords,
-        NMF_keywords,
-        cleaned_texts_with_indices,
-    )
-    extract_common_topics(filtered_messages, first_letters)
+    return performance

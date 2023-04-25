@@ -9,7 +9,7 @@ import json
 channel = 'Conscious_Freiburg'
 search_term = channel
 json_filename = 'telegram_messages.json'
-nr_messages = 10
+nr_messages = 200
 
 # Reading Configs
 config = configparser.ConfigParser()
