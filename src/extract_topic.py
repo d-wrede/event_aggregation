@@ -79,8 +79,8 @@ def cluster_messages(cleaned_texts):
     cluster_labels = kmeans.fit_predict(embeddings)
 
     # Print the cluster assignment for each text
-    for text, label in zip(cleaned_texts, cluster_labels):
-        print(f"Text: {text}\nCluster: {label}\n")
+    # for text, label in zip(cleaned_texts, cluster_labels):
+    #     print(f"Text: {text}\nCluster: {label}\n")
 
 
 def tf_IDF(cleaned_texts):
@@ -113,15 +113,13 @@ def tf_IDF(cleaned_texts):
             # Escape any special characters in the keyword for regex search
             escaped_keyword = re.escape(keyword)
             # Search for the keyword in the message, case insensitive
-            match = re.search(
+            if match := re.search(
                 escaped_keyword, cleaned_texts[index], flags=re.IGNORECASE
-            )
-            if match:
+            ):
                 # Append the matched original keyword to the list
                 original_case_keywords.append(match.group())
-
+        original_case_keywords = [keyword.replace(',', ' ').strip() for keyword in original_case_keywords]
         keywords.append(original_case_keywords)
-
     return keywords
 
 
@@ -274,6 +272,8 @@ def find_common_topics(keyword_dicts, text):
     )
 
     for algorithm, keywords in keyword_dicts.items():
+        # avoid the manually chosen topics being used in the common topics
+        if algorithm == 'chosen_topics': continue
         algorithm_weight = (weights[algorithm] / average_weights) * 20
         # ensure to only search for keywords that are not already in the frequency dictionary
         new_keywords = [key for key in keywords if key not in frequency_dict]
@@ -299,28 +299,12 @@ def find_common_topics(keyword_dicts, text):
                 else:
                     frequency_weight = 0
                 
-                digit_weight = -sum(char.isdigit() for char in keyword) / len(keyword) * 100
+                digit_weight = -sum(char.isdigit() for char in keyword) / len(keyword) * 300
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
                 score = (
                     rankweight + algorithm_weight + position_weight + frequency_weight + digit_weight
                 )
-                if keyword in [
-                    "März",
-                    "Berührung",
-                    "tänzerisch",
-                    "Muskeln",
-                    "gesucht",
-                    "Falls",
-                    "com",
-                    "Freude",
-                    "kopiert",
-                ]:
-                    print(
-                        f"keyword: {keyword}\nrankweight: {rankweight}\nalgorithm_weight: {algorithm_weight}\nposition_weight: {position_weight}\nfrequency: {frequency_dict[keyword]}\nfrequency_weight: {frequency_weight}\nscore: {score}\n\n"
-                    )
-                    pass
-                    # print(f"score: {score} for {keyword}")
             else:
                 score = 7 - rank if rank < 7 else 1
 
@@ -336,7 +320,6 @@ def find_common_topics(keyword_dicts, text):
             elif len(keyword.split()) <= 2:
                 longest_terms[keyword] = keyword
 
-    print("term_count: ", term_count)
     # Sort the terms by their score in descending order
     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
 
@@ -381,7 +364,6 @@ def check_thema(message):
         if newline_position == -1:
             newline_position = len(message["message"])
         topic = message["message"][index_position:newline_position].strip()
-        print("the topic is: ", topic)
         return topic
     else:
         return None
@@ -415,6 +397,9 @@ def check_if_topic(filtered_messages):
 def filter_keywords(keywords):
     filtered_keywords = []
     lowercase_keywords = set()
+
+    # only keywords with min length of 3
+    keywords = [keyword for keyword in keywords if len(keyword) > 2]
 
     for keyword in keywords:
         # Create a spaCy token from the keyword
@@ -477,7 +462,6 @@ def word_frequency(word_list, word_freq_dict):
             stemmed_word = stemmer.stem(word.lower())
             freq = word_freq_dict.get(stemmed_word)
         except Exception as e:
-            print(f"Error stemming the word '{word}': {e}")
             freq = None
 
         if freq is None:
@@ -509,7 +493,7 @@ def extract_keywords(cleaned_texts):
         rake_keywords.append(rake(cleaned_message))
 
     # TF-IDF, LDA, NMF
-    tf_IDF_keywords = tf_IDF(cleaned_texts).replace(',', ' ').strip()
+    tf_IDF_keywords = tf_IDF(cleaned_texts)
     LDA_keywords = LDA_topic_modeling(cleaned_texts)
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
     NMF_keywords = NMF_topic_modeling(cleaned_texts)
@@ -545,7 +529,7 @@ def extract_common_topics(filtered_messages, first_letters):
         if "common_topics" in message["topic_suggestions"]:
             continue
 
-        print("message: ", filter_string(message["message"][:first_letters]))
+        # print("message: ", filter_string(message["message"][:first_letters]))
 
         common_topics = find_common_topics(
             message["topic_suggestions"],
@@ -554,28 +538,28 @@ def extract_common_topics(filtered_messages, first_letters):
         common_topics = filter_keywords(common_topics)
         message["topic_suggestions"]["common_topics"] = common_topics
 
-        print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
-        print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
-        print("## later added ##")
-        print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
-        print("LDA: ", message["topic_suggestions"]["LDA"])
-        print("NMF: ", message["topic_suggestions"]["NMF"])
+        # print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
+        # print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
+        # print("## later added ##")
+        # print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
+        # print("LDA: ", message["topic_suggestions"]["LDA"])
+        # print("NMF: ", message["topic_suggestions"]["NMF"])
 
         # print timestamps
-        timestamps = message["timestamps"]
-        for stamp in timestamps:
-            if stamp["date1"]:
-                print("date1: ", stamp["date1"])
-            if stamp["clock1"]:
-                print("clock1: ", stamp["clock1"])
-            if stamp["date2"]:
-                print("date2: ", stamp["date2"])
-            if stamp["clock2"]:
-                print("clock2: ", stamp["clock2"])
-            print("---")
+        # timestamps = message["timestamps"]
+        # for stamp in timestamps:
+        #     if stamp["date1"]:
+        #         print("date1: ", stamp["date1"])
+        #     if stamp["clock1"]:
+        #         print("clock1: ", stamp["clock1"])
+        #     if stamp["date2"]:
+        #         print("date2: ", stamp["date2"])
+        #     if stamp["clock2"]:
+        #         print("clock2: ", stamp["clock2"])
+        #     print("---")
 
-        print("common topics: ", common_topics)
-        print("")
+        # print("common topics: ", common_topics)
+        # print("")
 
 
 def extract_topic(filtered_messages, first_letters):
@@ -630,27 +614,29 @@ def evaluate_topic_extraction(filtered_messages):
     # step through each message and find the score
     for message in filtered_messages:
         # find the respective evaluated message
-        found_message = False
-        for evaluated_message in evaluated_messages:
-            if evaluated_message["id"] == message["id"]:
-                # get selected topics
-                evaluated_topics = evaluated_message["common_topics"]
-                found_message = True
+        # found_message = False
+        # for evaluated_message in evaluated_messages:
+        #     if evaluated_message["message"][:50] == message["message"][:50]: # TODO: change to message["id"] == evaluated_message["id"]
+        #         # get selected topics
+        #         evaluated_topics = evaluated_message["common_topics"]
+        #         found_message = True
 
-        if not found_message:
-            print("message not found: ", message["id"])
-            continue
+        # if not found_message:
+        #     print("message not found: ", message["id"])
+        #     continue
 
         # compare the common topics in 'topics' with the common topics in 'message'
         # step through each list in the dictionary
         for key, topics in message["topic_suggestions"].items():
+            if key == 'chosen_topics':
+                continue
             # step through each topic in the list
             for i, topic in enumerate(topics):
                 # step through each selected topic
-                for j, evaluated_topic in enumerate(evaluated_topics):
-                    if topic == evaluated_topic:
+                for j, chosen_topic in enumerate(message["topic_suggestions"]["chosen_topics"]):
+                    if topic == chosen_topic:
                         score = 30 - i - j
                         performance[key] += score
-                        if score < 0:
-                            print("score < 0: ", score)
+                        # if score < 0:
+                        #     print("score < 0: ", score)
     return performance

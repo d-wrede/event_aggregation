@@ -1,5 +1,5 @@
 import json
-import pandas as pd
+import copy
 from src.extract_timestamp import extract_timestamp, filter_string
 from src.organize_timestamps import (
     dateparser_vs_ownparser,
@@ -7,25 +7,8 @@ from src.organize_timestamps import (
     get_min_date,
 )
 from src.extract_topic import (
-    spacy_ner,
-    rake,
-    cluster_messages,
-    tf_IDF,
-    LDA_topic_modeling,
-    sort_keywords_by_input_order,
-    NMF_topic_modeling,
-    find_common_topics,
-    remove_stopwords,
-    filter_keywords,
-    evaluate_topic_extraction,
-    word_frequency,
-    extract_keywords,
-    store_keywords_in_messages,
-    extract_common_topics,
-    check_thema,
-    get_thema_topic,
-    check_if_topic,
     extract_topic,
+    evaluate_topic_extraction,
 )
 
 
@@ -36,7 +19,7 @@ first_letters = 500
 optimization_switch = False
 
 
-def main():
+def process_messages():
     # read messages from json file
     with open(json_filename, "r", encoding="utf-8") as f:
         messages = json.load(f)
@@ -78,12 +61,12 @@ def main():
     # messages.sort(key=get_min_date)
 
     # list messages with timestamps and message text
-    filtered_messages = [
-    message
-    for message in messages[:number_of_messages]
-    if 'timestamps' in message
-    ]
-
+    # filtered_messages = [
+    # message
+    # for message in messages[:number_of_messages]
+    # if 'timestamps' in message
+    # ]
+    filtered_messages = messages[:number_of_messages]
     ### extract topic ###
     extract_topic(filtered_messages, first_letters)
 
@@ -98,34 +81,34 @@ def main():
 
 
     # safe in readable format
-    if not optimization_switch:
-        with open("file.txt", "w", encoding="utf-8") as f:
-            for message in filtered_messages:
-                f.write(
-                    f'### message ###\n{filter_string(message["message"])[:500]} \n---\n'
-                )
-                timestamps = message["timestamps"]
-                for stamp in timestamps:
-                    timestamp = ""
-                    if stamp["date1"]:
-                        timestamp += stamp["date1"]
-                    if stamp["clock1"]:
-                        timestamp += " " + stamp["clock1"]
-                    if stamp["date2"]:
-                        timestamp += " - " + stamp["date2"]
-                    if stamp["clock2"]:
-                        timestamp += " " + stamp["clock2"]
+    # if not optimization_switch:
+    #     with open("file.txt", "w", encoding="utf-8") as f:
+    #         for message in filtered_messages:
+    #             f.write(
+    #                 f'### message ###\n{filter_string(message["message"])[:500]} \n---\n'
+    #             )
+    #             timestamps = message["timestamps"]
+    #             for stamp in timestamps:
+    #                 timestamp = ""
+    #                 if stamp["date1"]:
+    #                     timestamp += stamp["date1"]
+    #                 if stamp["clock1"]:
+    #                     timestamp += " " + stamp["clock1"]
+    #                 if stamp["date2"]:
+    #                     timestamp += " - " + stamp["date2"]
+    #                 if stamp["clock2"]:
+    #                     timestamp += " " + stamp["clock2"]
 
-                    f.write(f"timestamp: {timestamp} \n")
-                # topics
-                f.write(f'topics: {message["topic_suggestions"]["common_topics"][:6]}\n\n')
+    #                 f.write(f"timestamp: {timestamp} \n")
+    #             # topics
+    #             f.write(f'topics: {message["topic_suggestions"]["common_topics"][:6]}\n\n')
 
         # save messages with timestamps
-        with open("new_message_list.json", "w", encoding="utf-8") as f:
-            json.dump(filtered_messages_with_selected_keys, f, indent=4, ensure_ascii=False)
+        # with open("new_message_list.json", "w", encoding="utf-8") as f:
+        #     json.dump(filtered_messages_with_selected_keys, f, indent=4, ensure_ascii=False)
     
     return performance
 
 
-if __name__ == "__main__" or optimization_switch:
-    main()
+if __name__ == "__main__":
+    process_messages()
