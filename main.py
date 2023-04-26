@@ -1,5 +1,7 @@
 import json
-import copy
+import yaml
+from copy import copy
+import os
 from src.extract_timestamp import extract_timestamp, filter_string
 from src.organize_timestamps import (
     dateparser_vs_ownparser,
@@ -23,6 +25,16 @@ def process_messages():
     # read messages from json file
     with open(json_filename, "r", encoding="utf-8") as f:
         messages = json.load(f)
+
+    # Get the directory path of the current file
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    
+    # Construct the path to the config.json file
+    config_path = os.path.join(current_directory, 'config', 'params.yaml')
+
+    # Load the configuration file
+    with open(config_path, "r") as file:
+        parameters = yaml.safe_load(file)
 
     # delete in each message the keys "spacy_NER", "rake_keywords", "tf_IDF", "LDA", "NMF", "common_topics" but leave "chosen_topics" in 'topic_suggestions'
     for message in messages:
@@ -68,7 +80,7 @@ def process_messages():
     # ]
     filtered_messages = messages[:number_of_messages]
     ### extract topic ###
-    extract_topic(filtered_messages, first_letters)
+    extract_topic(filtered_messages, first_letters, copy(parameters))
 
     # filtered_messages_with_selected_keys = [
     # {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
@@ -76,7 +88,7 @@ def process_messages():
     # ] # TODO: prevent duplicates
 
     # topic extraction algorithm evaluation
-    performance = evaluate_topic_extraction(filtered_messages)
+    performance = evaluate_topic_extraction(filtered_messages, copy(parameters))
     print("performance: ", performance)
 
 

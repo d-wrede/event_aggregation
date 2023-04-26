@@ -1,0 +1,34 @@
+keyword_selection_parameters:
+  spacy_keywords_weight: 5.3  # float 0 - 20
+  rake_keywords_weight: 6.9   # float 0 - 20
+  tf_IDF_keywords_weight: 15  # float 0 - 20
+  LDA_keywords_weight: 3      # float 0 - 20
+  NMF_keywords_weight: 9.8    # float 0 - 20
+  frequency_threshold1: 0.6   # float 0.4 - 1.0
+  frequency_threshold2: 1.2   # float 1.0 - 1.5
+  frequency_weight1: -75      # float -300 - 0
+  frequency_weight2: -150     # float -300 - -50
+  digit_weight: -300          # float -500 - 0
+  highest_rank: 35            # int 10 - 50
+  rank_weight: 2              # float 0 - 5
+  position_weight: 100        # float 0 - 500
+  position_ratio_weight: 1.5  # float 0 - 5
+spacy:
+  LOC: 1                      # int 0 / 1
+  ORG: 1                      # int 0 / 1
+  MISC: 1                     # int 0 / 1
+rake:
+  max_length: 3               # int 1 - 5
+tf_IDF:
+  min_keywords: 1             # int 1 - 5
+  max_keywords: 3             # int 1 - 10
+  keywords_multiplier: 0.5    # float 0 - 2.0
+LDA:
+  num_topics_multiplier: 1    # float 0 - 10.0
+NMF:
+  num_topics_multiplier: 1      # float 0 - 10.0
+
+
+
+
+  
