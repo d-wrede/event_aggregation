@@ -299,11 +299,11 @@ def find_common_topics(keyword_dicts, text):
                 else:
                     frequency_weight = 0
                 
-                # TODO: Add digit weight: - number(digits)/len(keyword) * 100
+                digit_weight = -sum(char.isdigit() for char in keyword) / len(keyword) * 100
 
                 # Assign a score based on the order of the keyword (higher rank = lower score) and position weight
                 score = (
-                    rankweight + algorithm_weight + position_weight + frequency_weight
+                    rankweight + algorithm_weight + position_weight + frequency_weight + digit_weight
                 )
                 if keyword in [
                     "März",
@@ -509,7 +509,7 @@ def extract_keywords(cleaned_texts):
         rake_keywords.append(rake(cleaned_message))
 
     # TF-IDF, LDA, NMF
-    tf_IDF_keywords = tf_IDF(cleaned_texts) # TODO: consider cleaning keywords for commas
+    tf_IDF_keywords = tf_IDF(cleaned_texts).replace(',', ' ').strip()
     LDA_keywords = LDA_topic_modeling(cleaned_texts)
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
     NMF_keywords = NMF_topic_modeling(cleaned_texts)

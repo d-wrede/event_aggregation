@@ -29,7 +29,7 @@ from src.extract_topic import (
 )
 
 
-json_filename = "/Users/danielwrede/Documents/read_event_messages/telegram_messages.json"
+json_filename = "/Users/danielwrede/Documents/read_event_messages/chosen_topics.json"
 
 number_of_messages = 600
 first_letters = 500
@@ -41,33 +41,41 @@ def main():
     with open(json_filename, "r", encoding="utf-8") as f:
         messages = json.load(f)
 
-    count_dates = 0
-    count_messages = 0
+    # delete in each message the keys "spacy_NER", "rake_keywords", "tf_IDF", "LDA", "NMF", "common_topics" but leave "chosen_topics" in 'topic_suggestions'
+    for message in messages:
+        if "topic_suggestions" in message:
+            message["topic_suggestions"] = {
+                "chosen_topics": message["topic_suggestions"]["chosen_topics"]
+            }
+    
 
-    # timestamp extraction
-    for message in messages[:number_of_messages]:
-        # and 'approved' not in message['timestamps']['comment']:
-        if "message" not in message or message["message"] == "":
-            continue
+    # count_dates = 0
+    # count_messages = 0
 
-        count_messages += 1
+    # # timestamp extraction
+    # for message in messages[:number_of_messages]:
+    #     # and 'approved' not in message['timestamps']['comment']:
+    #     if "message" not in message or message["message"] == "":
+    #         continue
 
-        # extract timestamps as list of dicts with date and time using own parser
-        time_matches = extract_timestamp(message["message"])
+    #     count_messages += 1
 
-        # interpret dates by connecting date and time
-        interpreted_dates = interpret_dates(time_matches)
+    #     # extract timestamps as list of dicts with date and time using own parser
+    #     time_matches = extract_timestamp(message["message"])
 
-        if len(interpreted_dates):
-            # add timestamps to message dict
-            message.setdefault("timestamps", [])
-            message["timestamps"] = interpreted_dates
-            count_dates += 1
+    #     # interpret dates by connecting date and time
+    #     interpreted_dates = interpret_dates(time_matches)
 
-    print(f"found {count_dates} dates in {len(messages)} messages")
+    #     if len(interpreted_dates):
+    #         # add timestamps to message dict
+    #         message.setdefault("timestamps", [])
+    #         message["timestamps"] = interpreted_dates
+    #         count_dates += 1
 
-    # sort messages by timestamp
-    messages.sort(key=get_min_date)
+    # print(f"found {count_dates} dates in {len(messages)} messages")
+
+    # # sort messages by timestamp
+    # messages.sort(key=get_min_date)
 
     # list messages with timestamps and message text
     filtered_messages = [
@@ -79,10 +87,10 @@ def main():
     ### extract topic ###
     extract_topic(filtered_messages, first_letters)
 
-    filtered_messages_with_selected_keys = [
-    {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
-    for message in filtered_messages
-    ] # TODO: prevent duplicates
+    # filtered_messages_with_selected_keys = [
+    # {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
+    # for message in filtered_messages
+    # ] # TODO: prevent duplicates
 
     # topic extraction algorithm evaluation
     performance = evaluate_topic_extraction(filtered_messages)
