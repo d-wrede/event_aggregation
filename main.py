@@ -80,16 +80,14 @@ def main():
     extract_topic(filtered_messages, first_letters)
 
     filtered_messages_with_selected_keys = [
-    {key: message[key] for key in ('message', 'topic_suggestions')}
+    {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
     for message in filtered_messages
-    ]
+    ] # TODO: prevent duplicates
 
     # topic extraction algorithm evaluation
     performance = evaluate_topic_extraction(filtered_messages)
     print("performance: ", performance)
 
-    for message in filtered_messages_with_selected_keys:
-        message['topic_suggestions'].setdefault("chosen_topics", [])
 
     # safe in readable format
     if not optimization_switch:
