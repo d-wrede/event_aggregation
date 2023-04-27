@@ -1,24 +1,23 @@
-from sentence_transformers import SentenceTransformer
-from sklearn.cluster import KMeans
+# from sentence_transformers import SentenceTransformer
+# from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
-import gensim
+from sklearn.decomposition import NMF
+#import gensim
 from gensim import corpora
 from gensim.models.ldamodel import LdaModel
-from gensim.parsing.preprocessing import (
-    preprocess_string,
-    strip_punctuation,
-    strip_numeric,
-)
-from sklearn.decomposition import NMF
+# from gensim.parsing.preprocessing import (
+#     preprocess_string,
+#     strip_punctuation,
+#     strip_numeric,
+# )
 from collections import defaultdict
 import re
 import spacy
 import json
 import warnings
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Load spaCy's German model
-nlp = spacy.load("de_core_news_lg")
+#nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
 
@@ -28,7 +27,7 @@ import nltk
 from src.extract_timestamp import filter_string
 
 
-def spacy_ner(message, parameters):
+def spacy_ner(message, parameters, nlp):
     doc = nlp(message)
     place = []
     topic = []
@@ -69,21 +68,21 @@ def rake(message, parameters):
     return original_case_keywords
 
 
-def cluster_messages(cleaned_texts):
-    # Load the pre-trained model
-    model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+# def cluster_messages(cleaned_texts, model):
+#     # Load the pre-trained model
+#     model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
-    # Generate embeddings for your texts
-    embeddings = model.encode(cleaned_texts)
+#     # Generate embeddings for your texts
+#     embeddings = model.encode(cleaned_texts)
 
-    # Cluster the embeddings using K-means
-    num_clusters = 3
-    kmeans = KMeans(n_clusters=num_clusters)
-    cluster_labels = kmeans.fit_predict(embeddings)
+#     # Cluster the embeddings using K-means
+#     num_clusters = 3
+#     kmeans = KMeans(n_clusters=num_clusters)
+#     cluster_labels = kmeans.fit_predict(embeddings)
 
-    # Print the cluster assignment for each text
-    # for text, label in zip(cleaned_texts, cluster_labels):
-    #     print(f"Text: {text}\nCluster: {label}\n")
+#     # Print the cluster assignment for each text
+#     # for text, label in zip(cleaned_texts, cluster_labels):
+#     #     print(f"Text: {text}\nCluster: {label}\n")
 
 
 def tf_IDF(cleaned_texts, parameters):
@@ -189,7 +188,7 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
 
     # Create the NMF model and fit it to the TF-IDF matrix
-    nmf = NMF(n_components=num_topics, random_state=42)
+    nmf = NMF(n_components=num_topics, max_iter=parameters['max_iter'], random_state=42)
     nmf.fit(tfidf_matrix)
 
     # Extract topics and associated words
@@ -336,7 +335,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     return most_common_terms
 
 
-def remove_stopwords(text):
+def remove_stopwords(text, nlp):
     # Tokenize the text using spaCy
     doc = nlp(text)
 
@@ -387,7 +386,7 @@ def check_if_topic(filtered_messages):
             message["topic_suggestions"]["common_topics"] = topic
 
 
-def filter_keywords(keywords):
+def filter_keywords(keywords, nlp):
     filtered_keywords = []
     lowercase_keywords = set()
 
@@ -428,6 +427,7 @@ def filter_keywords(keywords):
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
     df = pd.read_csv("high_frequency04_decow_wordfreq_cistem.csv", index_col=["word"])
+    print("Word frequency dictionary loaded in extract_topic.py")
     return df["freq"].to_dict()
 
 
@@ -461,12 +461,12 @@ def word_frequency(word_list, word_freq_dict):
     return entry_frequencies
 
 
-def extract_keywords(cleaned_texts, parameters):
+def extract_keywords(cleaned_texts, parameters, nlp):
     # spaCy NER and RAKE
     spacy_keywords = []
     rake_keywords = []
     for cleaned_message in cleaned_texts:
-        place, topic, misc = spacy_ner(cleaned_message, parameters["spacy"])
+        place, topic, misc = spacy_ner(cleaned_message, parameters["spacy"], nlp)
         spacy_keywords.append(place + topic + misc)
         rake_keywords.append(rake(cleaned_message, parameters["rake"]))
 
@@ -488,19 +488,20 @@ def store_keywords_in_messages(
     LDA_keywords,
     NMF_keywords,
     cleaned_texts_with_indices,
+    nlp_spacy,
 ):
     for i, (message_idx, _) in enumerate(cleaned_texts_with_indices):
         message = filtered_messages[message_idx]
-        message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i])
+        message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i], nlp_spacy)
         message["topic_suggestions"]["rake_keywords"] = filter_keywords(
-            rake_keywords[i]
+            rake_keywords[i], nlp_spacy
         )
-        message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i])
-        message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i])
-        message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
+        message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i], nlp_spacy)
+        message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i], nlp_spacy)
+        message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i], nlp_spacy)
 
 
-def extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict):
+def extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy):
     """Extract common topics, using the function 'find_common_topics',
     from the messages and store them in the message dictionaries."""
     for message in filtered_messages:
@@ -515,7 +516,7 @@ def extract_common_topics(filtered_messages, first_letters, parameters, word_fre
             parameters["keyword_selection_parameters"],
             word_freq_dict,
         )
-        common_topics = filter_keywords(common_topics)
+        common_topics = filter_keywords(common_topics, nlp_spacy)
         message["topic_suggestions"]["common_topics"] = common_topics
 
         # print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
@@ -542,7 +543,7 @@ def extract_common_topics(filtered_messages, first_letters, parameters, word_fre
         # print("")
 
 
-def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict):
+def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy):
     # add topic_suggestions key to each message
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
@@ -563,7 +564,7 @@ def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict):
         tf_IDF_keywords,
         LDA_keywords,
         NMF_keywords,
-    ) = extract_keywords([text for _, text in cleaned_texts_with_indices], parameters)
+    ) = extract_keywords([text for _, text in cleaned_texts_with_indices], parameters, nlp_spacy)
     store_keywords_in_messages(
         filtered_messages,
         spacy_keywords,
@@ -572,8 +573,9 @@ def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict):
         LDA_keywords,
         NMF_keywords,
         cleaned_texts_with_indices,
+        nlp_spacy,
     )
-    extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict)
+    extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy)
 
 
 def evaluate_topic_extraction(filtered_messages):

@@ -1,30 +1,31 @@
-LDA:
-  num_topics_multiplier: '2.101258387528165'
-  passes: '12'
-NMF:
-  num_topics_multiplier: '5.214410783835314'
 keyword_selection_parameters:
-  LDA_keywords_weight: '0.38911150132870387'
-  NMF_keywords_weight: '8.299610717703835'
-  digit_weight: '-300.0444902591849'
-  frequency_threshold1: '1'
-  frequency_threshold2: '1'
-  frequency_weight1: '-77.09962413287649'
-  frequency_weight2: '-151.86443130692984'
-  highest_rank: '33'
-  position_ratio_weight: '2.2019385067336543'
-  position_weight: '100.49408921327137'
-  rake_keywords_weight: '6.060678595419514'
-  rank_weight: '0.06198485209856583'
-  spacy_keywords_weight: '5.91962803384217'
-  tf_IDF_keywords_weight: '15.810684827071034'
-rake:
-  max_length: '2'
+  spacy_keywords_weight: 5.3 # float 0 - 20
+  rake_keywords_weight: 6.9 # float 0 - 20
+  tf_IDF_keywords_weight: 15 # float 0 - 20
+  LDA_keywords_weight: 3 # float 0 - 20
+  NMF_keywords_weight: 9.8 # float 0 - 20
+  frequency_threshold1: 0.6 # float 0.4 - 1.0
+  frequency_threshold2: 1.2 # float 1.0 - 1.5
+  frequency_weight1: -75 # float -300 - 0
+  frequency_weight2: -150 # float -300 - -50
+  digit_weight: -300 # float -500 - 0
+  highest_rank: 35 # int 10 - 50
+  rank_weight: 2 # float 0 - 5
+  position_weight: 100 # float 0 - 500
+  position_ratio_weight: 1.5 # float 0 - 5
 spacy:
-  LOC: '0'
-  MISC: '1'
-  ORG: '1'
+  LOC: 1 # int 0 / 1
+  ORG: 1 # int 0 / 1
+  MISC: 1 # int 0 / 1
+rake:
+  max_length: 3 # int 1 - 5
 tf_IDF:
-  keywords_multiplier: '1.9973752003924263'
-  max_keywords: '5'
-  min_keywords: '5'
+  min_keywords: 1 # int 1 - 5
+  max_keywords: 3 # int 1 - 10
+  keywords_multiplier: 0.5 # float 0 - 2.0
+LDA:
+  num_topics_multiplier: 1 # float 0 - 10.0
+  passes: 15 # int 5 - 30
+NMF:
+  num_topics_multiplier: 1 # float 0 - 10.0
+  max_iter: 100

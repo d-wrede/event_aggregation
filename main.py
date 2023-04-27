@@ -1,15 +1,15 @@
 import json
 # from ruamel.yaml import YAML
 # yaml = YAML(typ='safe')
-import yaml
+# import yaml
 from copy import copy
-import os
-from src.extract_timestamp import extract_timestamp, filter_string
-from src.organize_timestamps import (
-    dateparser_vs_ownparser,
-    interpret_dates,
-    get_min_date,
-)
+#import os
+#from src.extract_timestamp import extract_timestamp, filter_string
+# from src.organize_timestamps import (
+#     dateparser_vs_ownparser,
+#     interpret_dates,
+#     get_min_date,
+# )
 from src.extract_topic import (
     extract_topic,
     evaluate_topic_extraction,
@@ -56,7 +56,7 @@ def back_to_floats(parameters):
 
 
 
-def process_messages(word_freq_dict):
+def process_messages(word_freq_dict, parameters, messages, nlp_spacy):
     # Get the directory path of the current file
     # current_directory = os.path.dirname(os.path.abspath(__file__))
     
@@ -65,9 +65,9 @@ def process_messages(word_freq_dict):
     config_path = "config/params.yaml"
 
     # Load the configuration file
-    with open(config_path, "r") as file:
-        parameters = yaml.load(file, Loader=yaml.FullLoader)
-    back_to_floats(parameters)
+    # with open(config_path, "r") as file:
+    #     parameters = yaml.load(file, Loader=yaml.FullLoader)
+    # back_to_floats(parameters)
 
     # delete in each message the keys "spacy_NER", "rake_keywords", "tf_IDF", "LDA", "NMF", "common_topics" but leave "chosen_topics" in 'topic_suggestions'
     for message in messages:
@@ -113,7 +113,7 @@ def process_messages(word_freq_dict):
     # ]
     filtered_messages = messages[:number_of_messages]
     ### extract topic ###
-    extract_topic(filtered_messages, first_letters, copy(parameters), word_freq_dict)
+    extract_topic(filtered_messages, first_letters, copy(parameters), word_freq_dict, nlp_spacy)
 
     # filtered_messages_with_selected_keys = [
     # {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
