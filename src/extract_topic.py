@@ -9,12 +9,13 @@ from gensim.parsing.preprocessing import (
     strip_punctuation,
     strip_numeric,
 )
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
 from collections import defaultdict
 import re
 import spacy
 import json
+import warnings
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Load spaCy's German model
 nlp = spacy.load("de_core_news_lg")
@@ -33,11 +34,11 @@ def spacy_ner(message, parameters):
     topic = []
     misc = []
     for ent in doc.ents:
-        if ent.label_ == "LOC" and parameters['LOC']:
+        if ent.label_ == "LOC" and parameters["LOC"]:
             place.append(ent.text)
-        if ent.label_ == "ORG" and parameters['ORG']:
+        if ent.label_ == "ORG" and parameters["ORG"]:
             topic.append(ent.text)
-        if ent.label_ == "MISC" and parameters['MISC']:
+        if ent.label_ == "MISC" and parameters["MISC"]:
             misc.append(ent.text)
 
     return place, topic, misc
@@ -49,7 +50,9 @@ def rake(message, parameters):
 
     # Filter out keywords longer than the max_length
     filtered_keywords = [
-        kw for score, kw in scored_keywords if len(kw.split()) <= parameters["max_length"]
+        kw
+        for score, kw in scored_keywords
+        if len(kw.split()) <= parameters["max_length"]
     ]
 
     # Find the original case of the keywords in the message
@@ -84,25 +87,32 @@ def cluster_messages(cleaned_texts):
 
 
 def tf_IDF(cleaned_texts, parameters):
-    # Create the TfidfVectorizer with a custom tokenizer and analyzer
-    vectorizer = TfidfVectorizer(tokenizer=lambda text: text.split(), analyzer="word")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="The parameter 'token_pattern' will not be used since 'tokenizer' is not None'",
+        )
 
-    # Calculate the TF-IDF matrix
-    tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
+        # Create the TfidfVectorizer with a custom tokenizer and analyzer
+        vectorizer = TfidfVectorizer(
+            tokenizer=lambda text: text.split(), analyzer="word"
+        )
 
-    # Get the feature names (words)
-    feature_names = vectorizer.get_feature_names_out()
+        # Calculate the TF-IDF matrix
+        tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
+
+        # Get the feature names (words)
+        feature_names = vectorizer.get_feature_names_out()
 
     min_keywords = parameters["min_keywords"]
     max_keywords = parameters["max_keywords"]
 
-    
     keywords = []
 
     for index, text in enumerate(cleaned_texts):
         # Number of top keywords to extract from each text
         num_keywords = int(len(text.split()) * parameters["keywords_multiplier"])
-        
+
         # Clip the value to the defined boundaries
         num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
@@ -148,7 +158,10 @@ def LDA_topic_modeling(cleaned_texts, parameters):
     if num_topics == 0:
         num_topics = 1
     model = LdaModel(
-        corpus=corpus, id2word=dictionary, num_topics=num_topics, passes=parameters["passes"]
+        corpus=corpus,
+        id2word=dictionary,
+        num_topics=num_topics,
+        passes=parameters["passes"],
     )
 
     # Parse the topics to get lists of keywords
@@ -217,7 +230,7 @@ def sort_keywords_by_input_order(lda_keywords, cleaned_texts):
     return sorted_lda_keywords
 
 
-def find_common_topics(keyword_dicts, text, parameters):
+def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     term_count = defaultdict(float)
     longest_terms = {}
     text_length = len(text)
@@ -226,11 +239,11 @@ def find_common_topics(keyword_dicts, text, parameters):
         "rake_keywords": parameters["rake_keywords_weight"],
         "tf_IDF": parameters["tf_IDF_keywords_weight"],
         "LDA": parameters["LDA_keywords_weight"],
-        "NMF": parameters["NMF_keywords_weight"]
+        "NMF": parameters["NMF_keywords_weight"],
     }
     # using a frequency dictionary to store the frequency of each word due to timing issues
     frequency_dict = {}
-    word_freq_dict = load_word_freq_dict()
+    # word_freq_dict = load_word_freq_dict()
 
     for algorithm, keywords in keyword_dicts.items():
         # avoid the manually chosen topics being used in the common topics
@@ -243,7 +256,9 @@ def find_common_topics(keyword_dicts, text, parameters):
 
         for rank, keyword in enumerate(keywords):
             highest = parameters["highest_rank"]
-            rankweight = (highest - rank if rank < highest else 1) * parameters["rank_weight"]
+            rankweight = (highest - rank if rank < highest else 1) * parameters[
+                "rank_weight"
+            ]
 
             # Calculate the frequency-based weight
             frequency_threshold1 = parameters["frequency_threshold1"] * 10**6
@@ -255,7 +270,11 @@ def find_common_topics(keyword_dicts, text, parameters):
             else:
                 frequency_weight = 0
 
-            digit_weight = sum(char.isdigit() for char in keyword) / len(keyword) * parameters["digit_weight"]
+            digit_weight = (
+                sum(char.isdigit() for char in keyword)
+                / len(keyword)
+                * parameters["digit_weight"]
+            )
 
             # Find the index position of the keyword in the text
             index_position = text.find(keyword)
@@ -263,8 +282,12 @@ def find_common_topics(keyword_dicts, text, parameters):
             if index_position != -1:
                 # Calculate the position-based weight
                 position_weight = (
-                    1 - (index_position / text_length) * parameters["position_ratio_weight"]
-                ) * parameters["position_weight"] # TODO: describe as a function
+                    1
+                    - (index_position / text_length)
+                    * parameters["position_ratio_weight"]
+                ) * parameters[
+                    "position_weight"
+                ]  # TODO: describe as a function
 
                 # Assign a score based on the calculated weights
                 score = (
@@ -402,24 +425,9 @@ def filter_keywords(keywords):
     return filtered_keywords
 
 
-# Filter the DataFrame to only include rows with a frequency above 600,000
-# filtered_df = df[df['freq'] > 600000]
-
-# # Save the filtered DataFrame to a new CSV file
-# filtered_df.to_csv('filtered_decow_wordfreq_cistem.csv')
-# print("saved filtered df")
-
-# # Calculate the number of words in the filtered DataFrame and the number of words that have been filtered out
-# num_words_filtered = len(filtered_df)
-# num_words_filtered_out = len(df) - num_words_filtered
-
-# print(f"Number of words in the filtered DataFrame: {num_words_filtered}")
-# print(f"Number of words filtered out: {num_words_filtered_out}")
-
-
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
-    df = pd.read_csv("high_frequency_decow_wordfreq_cistem.csv", index_col=["word"])
+    df = pd.read_csv("high_frequency04_decow_wordfreq_cistem.csv", index_col=["word"])
     return df["freq"].to_dict()
 
 
@@ -458,15 +466,15 @@ def extract_keywords(cleaned_texts, parameters):
     spacy_keywords = []
     rake_keywords = []
     for cleaned_message in cleaned_texts:
-        place, topic, misc = spacy_ner(cleaned_message, parameters['spacy'])
+        place, topic, misc = spacy_ner(cleaned_message, parameters["spacy"])
         spacy_keywords.append(place + topic + misc)
-        rake_keywords.append(rake(cleaned_message, parameters['rake']))
+        rake_keywords.append(rake(cleaned_message, parameters["rake"]))
 
     # TF-IDF, LDA, NMF
-    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters['tf_IDF'])
-    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters['LDA'])
+    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
+    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
-    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters['NMF'])
+    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
     NMF_keywords = sort_keywords_by_input_order(NMF_keywords, cleaned_texts)
 
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
@@ -492,7 +500,7 @@ def store_keywords_in_messages(
         message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i])
 
 
-def extract_common_topics(filtered_messages, first_letters, parameters):
+def extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict):
     """Extract common topics, using the function 'find_common_topics',
     from the messages and store them in the message dictionaries."""
     for message in filtered_messages:
@@ -504,7 +512,8 @@ def extract_common_topics(filtered_messages, first_letters, parameters):
         common_topics = find_common_topics(
             message["topic_suggestions"],
             filter_string(message["message"][:first_letters]),
-            parameters['keyword_selection_parameters']
+            parameters["keyword_selection_parameters"],
+            word_freq_dict,
         )
         common_topics = filter_keywords(common_topics)
         message["topic_suggestions"]["common_topics"] = common_topics
@@ -533,7 +542,7 @@ def extract_common_topics(filtered_messages, first_letters, parameters):
         # print("")
 
 
-def extract_topic(filtered_messages, first_letters, parameters):
+def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict):
     # add topic_suggestions key to each message
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
@@ -564,7 +573,7 @@ def extract_topic(filtered_messages, first_letters, parameters):
         NMF_keywords,
         cleaned_texts_with_indices,
     )
-    extract_common_topics(filtered_messages, first_letters)
+    extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict)
 
 
 def evaluate_topic_extraction(filtered_messages):

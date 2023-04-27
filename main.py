@@ -1,4 +1,6 @@
 import json
+# from ruamel.yaml import YAML
+# yaml = YAML(typ='safe')
 import yaml
 from copy import copy
 import os
@@ -20,21 +22,52 @@ number_of_messages = 600
 first_letters = 500
 optimization_switch = False
 
+# read messages from json file
+with open(json_filename, "r", encoding="utf-8") as f:
+    messages = json.load(f)
 
-def process_messages():
-    # read messages from json file
-    with open(json_filename, "r", encoding="utf-8") as f:
-        messages = json.load(f)
+def back_to_floats(parameters):
+    # Convert variables to floats and integers
+    parameters['keyword_selection_parameters']['spacy_keywords_weight'] = float(parameters['keyword_selection_parameters']['spacy_keywords_weight'])
+    parameters['keyword_selection_parameters']['rake_keywords_weight'] = float(parameters['keyword_selection_parameters']['rake_keywords_weight'])
+    parameters['keyword_selection_parameters']['tf_IDF_keywords_weight'] = float(parameters['keyword_selection_parameters']['tf_IDF_keywords_weight'])
+    parameters['keyword_selection_parameters']['LDA_keywords_weight'] = float(parameters['keyword_selection_parameters']['LDA_keywords_weight'])
+    parameters['keyword_selection_parameters']['NMF_keywords_weight'] = float(parameters['keyword_selection_parameters']['NMF_keywords_weight'])
+    parameters['keyword_selection_parameters']['frequency_threshold1'] = float(parameters['keyword_selection_parameters']['frequency_threshold1'])
+    parameters['keyword_selection_parameters']['frequency_threshold2'] = float(parameters['keyword_selection_parameters']['frequency_threshold2'])
+    parameters['keyword_selection_parameters']['frequency_weight1'] = float(parameters['keyword_selection_parameters']['frequency_weight1'])
+    parameters['keyword_selection_parameters']['frequency_weight2'] = float(parameters['keyword_selection_parameters']['frequency_weight2'])
+    parameters['keyword_selection_parameters']['digit_weight'] = float(parameters['keyword_selection_parameters']['digit_weight'])
+    parameters['keyword_selection_parameters']['highest_rank'] = int(parameters['keyword_selection_parameters']['highest_rank'])
+    parameters['keyword_selection_parameters']['rank_weight'] = float(parameters['keyword_selection_parameters']['rank_weight'])
+    parameters['keyword_selection_parameters']['position_weight'] = float(parameters['keyword_selection_parameters']['position_weight'])
+    parameters['keyword_selection_parameters']['position_ratio_weight'] = float(parameters['keyword_selection_parameters']['position_ratio_weight'])
+    parameters['spacy']['LOC'] = int(parameters['spacy']['LOC'])
+    parameters['spacy']['ORG'] = int(parameters['spacy']['ORG'])
+    parameters['spacy']['MISC'] = int(parameters['spacy']['MISC'])
+    parameters['rake']['max_length'] = int(parameters['rake']['max_length'])
+    parameters['tf_IDF']['min_keywords'] = int(parameters['tf_IDF']['min_keywords'])
+    parameters['tf_IDF']['max_keywords'] = int(parameters['tf_IDF']['max_keywords'])
+    parameters['tf_IDF']['keywords_multiplier'] = float(parameters['tf_IDF']['keywords_multiplier'])
+    parameters['LDA']['num_topics_multiplier'] = float(parameters['LDA']['num_topics_multiplier'])
+    parameters['LDA']['passes'] = int(parameters['LDA']['passes'])
+    parameters['NMF']['num_topics_multiplier'] = float(parameters['NMF']['num_topics_multiplier'])
 
+
+
+
+def process_messages(word_freq_dict):
     # Get the directory path of the current file
-    current_directory = os.path.dirname(os.path.abspath(__file__))
+    # current_directory = os.path.dirname(os.path.abspath(__file__))
     
     # Construct the path to the config.json file
-    config_path = os.path.join(current_directory, 'config', 'params.yaml')
+    # config_path = os.path.join(current_directory, 'config', 'params.yaml')
+    config_path = "config/params.yaml"
 
     # Load the configuration file
     with open(config_path, "r") as file:
-        parameters = yaml.safe_load(file)
+        parameters = yaml.load(file, Loader=yaml.FullLoader)
+    back_to_floats(parameters)
 
     # delete in each message the keys "spacy_NER", "rake_keywords", "tf_IDF", "LDA", "NMF", "common_topics" but leave "chosen_topics" in 'topic_suggestions'
     for message in messages:
@@ -80,7 +113,7 @@ def process_messages():
     # ]
     filtered_messages = messages[:number_of_messages]
     ### extract topic ###
-    extract_topic(filtered_messages, first_letters, copy(parameters))
+    extract_topic(filtered_messages, first_letters, copy(parameters), word_freq_dict)
 
     # filtered_messages_with_selected_keys = [
     # {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}
@@ -88,8 +121,8 @@ def process_messages():
     # ] # TODO: prevent duplicates
 
     # topic extraction algorithm evaluation
-    performance = evaluate_topic_extraction(filtered_messages, copy(parameters))
-    print("performance: ", performance)
+    performance = evaluate_topic_extraction(filtered_messages)
+    #print("performance: ", performance)
 
 
     # safe in readable format
