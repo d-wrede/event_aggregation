@@ -27,45 +27,37 @@ import nltk
 from src.extract_timestamp import filter_string
 
 
-def spacy_ner(message, parameters, nlp):
-    doc = nlp(message)
-    place = []
-    topic = []
-    misc = []
-    for ent in doc.ents:
-        if ent.label_ == "LOC" and parameters["LOC"]:
-            place.append(ent.text)
-        if ent.label_ == "ORG" and parameters["ORG"]:
-            topic.append(ent.text)
-        if ent.label_ == "MISC" and parameters["MISC"]:
-            misc.append(ent.text)
-
-    return place, topic, misc
+def spacy_ner(messages, parameters, nlp):
+    results = []
+    for doc in nlp.pipe(messages):
+        keywords = []
+        for ent in doc.ents:
+            if ent.label_ in ("LOC", "ORG", "MISC") and parameters.get(ent.label_):
+                keywords.append(ent.text)
+        results.append(keywords)
+    return results
 
 
-def rake(message, parameters):
-    r.extract_keywords_from_text(message)
-    scored_keywords = r.get_ranked_phrases_with_scores()
+def rake(messages, parameters):
+    results = []
 
-    # Filter out keywords longer than the max_length
-    filtered_keywords = [
-        kw
-        for score, kw in scored_keywords
-        if len(kw.split()) <= parameters["max_length"]
-    ]
+    for message in messages:
+        r.extract_keywords_from_text(message)
+        scored_keywords = r.get_ranked_phrases_with_scores()
 
-    # Find the original case of the keywords in the message
-    original_case_keywords = []
-    for keyword in filtered_keywords:
-        # Escape any special characters in the keyword for regex search
-        escaped_keyword = re.escape(keyword)
-        # Search for the keyword in the message, case insensitive
-        match = re.search(escaped_keyword, message, flags=re.IGNORECASE)
-        if match:
-            # Append the matched original keyword to the list
-            original_case_keywords.append(match.group())
+        # Filter out keywords longer than the max_length and find the original case
+        original_case_keywords = [
+            match.group()
+            for score, kw in scored_keywords
+            if len(kw.split()) <= parameters["max_length"]
+            for match in [re.search(re.escape(kw), message, flags=re.IGNORECASE)]
+            if match
+        ]
+        results.append(original_case_keywords)
 
-    return original_case_keywords
+    return results
+
+
 
 
 # def cluster_messages(cleaned_texts, model):
@@ -392,11 +384,10 @@ def filter_keywords(keywords, nlp):
 
     # only keywords with min length of 3
     keywords = [keyword for keyword in keywords if len(keyword) > 2]
+    # Create spaCy tokens from the keywords
+    tokens = [doc[0] for doc in nlp.pipe(keywords)]
 
-    for keyword in keywords:
-        # Create a spaCy token from the keyword
-        token = nlp(keyword)[0]
-
+    for i, keyword in enumerate(keywords):
         # Find all sets of digits in the keyword
         digit_sets = re.findall(r"\d+", keyword)
 
@@ -413,7 +404,7 @@ def filter_keywords(keywords, nlp):
 
         if (
             len(keyword) > 2
-            and not token.is_stop
+            and not tokens[i].is_stop
             and valid_digit_rule
             and not contains_link
             and not_duplicate
@@ -462,14 +453,9 @@ def word_frequency(word_list, word_freq_dict):
 
 
 def extract_keywords(cleaned_texts, parameters, nlp):
-    # spaCy NER and RAKE
-    spacy_keywords = []
-    rake_keywords = []
-    for cleaned_message in cleaned_texts:
-        place, topic, misc = spacy_ner(cleaned_message, parameters["spacy"], nlp)
-        spacy_keywords.append(place + topic + misc)
-        rake_keywords.append(rake(cleaned_message, parameters["rake"]))
-
+    """Extract keywords from the cleaned texts"""
+    rake_keywords = rake(cleaned_texts, parameters["rake"])
+    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp)
     # TF-IDF, LDA, NMF
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
@@ -492,13 +478,11 @@ def store_keywords_in_messages(
 ):
     for i, (message_idx, _) in enumerate(cleaned_texts_with_indices):
         message = filtered_messages[message_idx]
-        message["topic_suggestions"]["spacy_NER"] = filter_keywords(spacy_keywords[i], nlp_spacy)
-        message["topic_suggestions"]["rake_keywords"] = filter_keywords(
-            rake_keywords[i], nlp_spacy
-        )
-        message["topic_suggestions"]["tf_IDF"] = filter_keywords(tf_IDF_keywords[i], nlp_spacy)
-        message["topic_suggestions"]["LDA"] = filter_keywords(LDA_keywords[i], nlp_spacy)
-        message["topic_suggestions"]["NMF"] = filter_keywords(NMF_keywords[i], nlp_spacy)
+        message["topic_suggestions"]["spacy_NER"] = spacy_keywords[i]
+        message["topic_suggestions"]["rake_keywords"] = rake_keywords[i]
+        message["topic_suggestions"]["tf_IDF"] = tf_IDF_keywords[i]
+        message["topic_suggestions"]["LDA"] = LDA_keywords[i]
+        message["topic_suggestions"]["NMF"] = NMF_keywords[i]
 
 
 def extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy):
@@ -590,8 +574,8 @@ def evaluate_topic_extraction(filtered_messages):
         "common_topics": 0,
     }
     # load the evaluated messages
-    with open("topics.json", "r", encoding="utf-8") as f:
-        evaluated_messages = json.load(f)
+    # with open("topics.json", "r", encoding="utf-8") as f:
+    #     evaluated_messages = json.load(f)
 
     # step through each message and find the score
     for message in filtered_messages:

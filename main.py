@@ -16,15 +16,15 @@ from src.extract_topic import (
 )
 
 
-json_filename = "/Users/danielwrede/Documents/read_event_messages/chosen_topics.json"
+json_filename = "chosen_topics.json"
 
 number_of_messages = 600
 first_letters = 500
 optimization_switch = False
 
 # read messages from json file
-with open(json_filename, "r", encoding="utf-8") as f:
-    messages = json.load(f)
+# with open(json_filename, "r", encoding="utf-8") as f:
+#     messages = json.load(f)
 
 def back_to_floats(parameters):
     # Convert variables to floats and integers

@@ -4,7 +4,7 @@
 
 import cma
 import os
-from cma import transformations
+#from cma import transformations
 import numpy as np
 import pandas as pd
 import spacy
@@ -12,7 +12,6 @@ import spacy
 import yaml
 import json
 from main import process_messages
-import matplotlib.pyplot as plt
 import time
 import multiprocessing as mp
 from multiprocessing import freeze_support
@@ -25,7 +24,7 @@ cProfile_switch = False
 # run file as: python3 optimize_parameters.py -Xfrozen_modules=off
 
 # Set the number of cores to use for multiprocessing
-n_cores = 7
+n_cores = 16
 
 config_path = "config/params.yaml"
 with open(config_path, "r") as file:
@@ -41,7 +40,7 @@ def load_word_freq_dict():
 # preloading the word frequency dictionary
 word_freq_dict = load_word_freq_dict()
 
-json_filename = "/Users/danielwrede/Documents/read_event_messages/chosen_topics.json"
+json_filename = "chosen_topics.json"
 with open(json_filename, "r", encoding="utf-8") as f:
     messages = json.load(f)
 
@@ -148,7 +147,7 @@ initial_values = [float(val) for val in initial_values]
 
 myoptions = {
     "bounds": [lower_bounds, upper_bounds],
-    "popsize": 4,
+    "popsize": 15,
     "verb_disp": 100,
     "tolx": 1e-6,
     "tolfun": 1e-4,
@@ -164,7 +163,7 @@ if cProfile_switch:
 
     # Load the results from the file and sort them by cumulative time
     stats = pstats.Stats(profile_filename)
-    stats.sort_stats("cumulative").print_stats(20)
+    stats.sort_stats("cumulative").print_stats(40)
     exit()
 # Call the CMA-ES optimization function with transformations
 #initial_values = [float(val) for val in initial_values]
@@ -182,7 +181,7 @@ if __name__ == '__main__':
         f_values = pool.map_async(run_process_messages, X).get()
         # use chunksize parameter as es.popsize/len(pool)?
         es.tell(X, f_values)
-        if counter % 5 == 0:
+        if counter % 10 == 0:
             # Get the worst individual
             worst_individual = X[0] #np.argmax(f_values)
             # Run the function with profiling and save the results to a file
@@ -190,7 +189,7 @@ if __name__ == '__main__':
             # Load the results from the file and sort them by cumulative time
             stats = pstats.Stats(profile_filename)
             # print the top 20 functions sorted by cumulative time
-            stats.sort_stats("cumulative").print_stats(20)
+            stats.sort_stats("cumulative").print_stats(40)
         es.disp()
         es.logger.add()
         es.logger.disp()
