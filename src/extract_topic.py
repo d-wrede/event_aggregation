@@ -28,8 +28,16 @@ from src.extract_timestamp import filter_string
 
 
 def spacy_ner(messages, parameters, nlp):
+    """Extracts named entities from the messages using spaCy's NER model."""
+    # Calculate the average number of words in the messages
+    avg_words = sum(len(message.split()) for message in messages) / len(messages)
+    # Calculate the number of messages, which are processed in one batch
+    batch_size = round(avg_words * parameters['batch_size'])
+
     results = []
-    for doc in nlp.pipe(messages):
+    # Process the messages in batches and extract 
+    # locations, organizations and miscellaneous entities
+    for doc in nlp.pipe(messages, batch_size=batch_size):
         keywords = []
         for ent in doc.ents:
             if ent.label_ in ("LOC", "ORG", "MISC") and parameters.get(ent.label_):

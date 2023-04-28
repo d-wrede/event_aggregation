@@ -46,11 +46,7 @@ with open(json_filename, "r", encoding="utf-8") as f:
 
 nlp_spacy = spacy.load("de_core_news_lg", disable=["parser", "tagger"])
 
-
-# Define the objective function
-def run_process_messages(x):
-    """Run the process_messages function with the given parameters"""
-    
+def update_parameters(x):
     # Update the parameters with the new values from the optimization
     ksp = parameters['keyword_selection_parameters']
     ksp['spacy_keywords_weight'] = x[0]
@@ -70,23 +66,21 @@ def run_process_messages(x):
     parameters['spacy']['LOC'] = round(x[14])
     parameters['spacy']['ORG'] = round(x[15])
     parameters['spacy']['MISC'] = round(x[16])
-    parameters['rake']['max_length'] = round(x[17])
-    parameters['tf_IDF']['min_keywords'] = round(x[18])
-    parameters['tf_IDF']['max_keywords'] = round(x[19])
-    parameters['tf_IDF']['keywords_multiplier'] = x[20]
-    parameters['LDA']['num_topics_multiplier'] = x[21]
-    parameters['LDA']['passes'] = round(x[22])
-    parameters['NMF']['num_topics_multiplier'] = x[23]
-    parameters['NMF']['max_iter'] = round(x[24])
+    parameters['spacy']['batch_size'] = x[17]
+    parameters['rake']['max_length'] = round(x[18])
+    parameters['tf_IDF']['min_keywords'] = round(x[19])
+    parameters['tf_IDF']['max_keywords'] = round(x[20])
+    parameters['tf_IDF']['keywords_multiplier'] = x[21]
+    parameters['LDA']['num_topics_multiplier'] = x[22]
+    parameters['LDA']['passes'] = round(x[23])
+    parameters['NMF']['num_topics_multiplier'] = x[24]
+    parameters['NMF']['max_iter'] = round(x[25])
+    return parameters
 
-    # Convert dictionary to JSON object
-    #json_obj = json.dumps(parameters)
-
-    # Convert JSON object to YAML and save to file
-    # Save the updated parameters back to the YAML file without removing comments
-    # with open(config_path, "w") as file:
-    #     yaml.dump(parameters, file)
-
+# Define the objective function
+def run_process_messages(x):
+    """Run the process_messages function with the given parameters"""
+    parameters = update_parameters(x)
     start_time = time.time()
 
     # Call the process_messages function
@@ -119,6 +113,7 @@ initial_values = [
     parameters['spacy']['LOC'],
     parameters['spacy']['ORG'],
     parameters['spacy']['MISC'],
+    parameters['spacy']['batch_size'],
     parameters['rake']['max_length'],
     parameters['tf_IDF']['min_keywords'],
     parameters['tf_IDF']['max_keywords'],
@@ -132,26 +127,26 @@ initial_values = [
 
 lower_bounds = [
     0, 0, 0, 0, 0, 0.4, 1.0, -300, -300, -500, 10, 0, 0, 0, 
-    0, 0, 0, 1, 1, 1, 0, 0, 5, 0, 1
+    0, 0, 0, 1, 1, 1, 1, 0, 0, 5, 0, 1
 ]
 
 upper_bounds = [
     20, 20, 20, 20, 20, 1.0, 1.5, 0, -50, 0, 50, 5, 500, 5, 
-    1, 1, 1, 5, 5, 10, 2.0, 10, 30, 2, 200
+    1, 1, 1, 100, 5, 5, 10, 2.0, 10, 30, 2, 200
 ]
 # Set the index positions of the integer parameters in the input vector
-idx_integers = [10, 14, 15, 16, 17, 18, 19, 22, 24]
+idx_integers = [10, 14, 15, 16, 18, 19, 20, 23, 25]
 
 # Convert the parameters to floats
 initial_values = [float(val) for val in initial_values]
 
 myoptions = {
     "bounds": [lower_bounds, upper_bounds],
-    "popsize": 15,
+    "popsize": 16,
     "verb_disp": 100,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 100000,
+    "maxiter": 1000000,
 }
 
 # Set the initial standard deviation for the optimization
@@ -196,9 +191,16 @@ if __name__ == '__main__':
         #print(f"round {counter} of {myoptions['maxiter']}")
         counter += 1
     print('termination:', es.stop())
-    cma.pprint(es.best.__dict__)
+    cma.print(es.best.__dict__)
     print("Optimized parameters:", es.result.xbest)
     # Close the multiprocessing pool
     pool.close()
     pool.join()
+
+    # Convert the optimized parameters to a dictionary
+    parameters = update_parameters(es.result.xbest)
+    # Save the updated parameters in yaml format
+    with open("config/params_optimized.yaml", "w") as file:
+        yaml.dump(parameters, file)
+
 

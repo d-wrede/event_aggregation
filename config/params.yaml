@@ -17,6 +17,7 @@ spacy:
   LOC: 1 # int 0 / 1
   ORG: 1 # int 0 / 1
   MISC: 1 # int 0 / 1
+  batch_size: 10 # int 1 - 100
 rake:
   max_length: 3 # int 1 - 5
 tf_IDF:
