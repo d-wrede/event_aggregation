@@ -17,6 +17,9 @@ import multiprocessing as mp
 from multiprocessing import freeze_support
 import cProfile
 import pstats
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 profile_filename = "profile_results.prof"
 cProfile_switch = False
@@ -24,9 +27,9 @@ cProfile_switch = False
 # run file as: python3 optimize_parameters.py -Xfrozen_modules=off
 
 # Set the number of cores to use for multiprocessing
-n_cores = 16
+n_cores = 15
 
-config_path = "config/params.yaml"
+config_path = "config/params_opt.yaml"
 with open(config_path, "r") as file:
     parameters = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -34,7 +37,7 @@ with open(config_path, "r") as file:
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
     df = pd.read_csv("high_frequency04_decow_wordfreq_cistem.csv", index_col=["word"])
-    print("Word frequency dictionary loaded in optimize_parameters.py")
+    #print("Word frequency dictionary loaded in optimize_parameters.py")
     return df["freq"].to_dict()
 
 # preloading the word frequency dictionary
@@ -86,13 +89,13 @@ def run_process_messages(x):
     # Call the process_messages function
     performance = process_messages(word_freq_dict, parameters, messages, nlp_spacy)
     end_time = time.time()
-    perf_score = performance['common_topics'] - (end_time - start_time) * 50
+    perf_score = performance['common_topics'] - (end_time - start_time) * 25
 
-    print("performance['common_topics']", performance['common_topics'])
-    print("iteration time: ", end_time - start_time)
-    print("combined perf_score: ", perf_score)
+    # print("performance['common_topics']", performance['common_topics'])
+    # print("iteration time: ", end_time - start_time)
+    # print("combined perf_score: ", perf_score)
     # Return the performance score for optimization
-    return -perf_score
+    return performance['common_topics'], -perf_score, end_time - start_time
 
 # Set the initial values and bounds for the optimization
 initial_values = [
@@ -142,11 +145,11 @@ initial_values = [float(val) for val in initial_values]
 
 myoptions = {
     "bounds": [lower_bounds, upper_bounds],
-    "popsize": 16,
+    "popsize": 30,
     "verb_disp": 100,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 1000000,
+    "maxiter": 10000,
 }
 
 # Set the initial standard deviation for the optimization
@@ -165,6 +168,7 @@ if cProfile_switch:
 # es = cma.fmin(run_process_messages, initial_values, sigma0, options=myoptions)
 
 if __name__ == '__main__':
+    #main_start_time = time.time()
     os.environ['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'
     freeze_support()
     es = cma.CMAEvolutionStrategy(initial_values, sigma0, myoptions)
@@ -173,12 +177,26 @@ if __name__ == '__main__':
     counter = 1
     while not es.stop():
         X = es.ask()
-        f_values = pool.map_async(run_process_messages, X).get()
-        # use chunksize parameter as es.popsize/len(pool)?
+        # initialize timing after cold start phase
+        if counter == 2:
+            main_start_time = time.time()
+
+        # evaluate function in parallel
+        results = pool.map_async(run_process_messages, X).get()
+        
+        # Print the best performance and longest runtime every iteration
+        if counter >= 2:
+            # Print the best performance and longest runtime every iteration
+            print("Best performance:", max(performance))
+            print("longest runtime:", max(runtimes))
+            print("sec/f_eval: ", (time.time() - main_start_time) / (counter * myoptions['popsize']))
+
+        performance, f_values, runtimes = zip(*results)
         es.tell(X, f_values)
+
         if counter % 10 == 0:
-            # Get the worst individual
-            worst_individual = X[0] #np.argmax(f_values)
+            max_idx = np.argmax(runtimes)
+            worst_individual = X[max_idx]
             # Run the function with profiling and save the results to a file
             cProfile.run("run_process_messages(worst_individual)", filename=profile_filename)
             # Load the results from the file and sort them by cumulative time
@@ -191,7 +209,7 @@ if __name__ == '__main__':
         #print(f"round {counter} of {myoptions['maxiter']}")
         counter += 1
     print('termination:', es.stop())
-    cma.print(es.best.__dict__)
+    es.result_pretty()
     print("Optimized parameters:", es.result.xbest)
     # Close the multiprocessing pool
     pool.close()

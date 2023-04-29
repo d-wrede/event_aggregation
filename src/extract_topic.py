@@ -250,7 +250,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             continue
         algorithm_weight = weights[algorithm]
         # ensure to only search for keywords that are not already in the frequency dictionary
-        new_keywords = [key for key in keywords if key not in frequency_dict]
+        new_keywords = [key for key in keywords if key and key not in frequency_dict]
         frequency_dict.update(word_frequency(new_keywords, word_freq_dict))
 
         for rank, keyword in enumerate(keywords):
@@ -449,14 +449,11 @@ def word_frequency(word_list, word_freq_dict):
     def process_entry(entry):
         words = entry.split()
         word_frequencies = [german_word_frequency(word) for word in words]
-
         # Use the lowest frequency of individual words
         combined_frequency = min(word_frequencies)
-
         return combined_frequency
 
-    entry_frequencies = {entry: process_entry(entry) for entry in word_list}
-
+    entry_frequencies = {entry: process_entry(entry) for entry in word_list if entry}
     return entry_frequencies
 
 
