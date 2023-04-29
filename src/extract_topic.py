@@ -2,9 +2,11 @@
 # from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
-#import gensim
+
+# import gensim
 from gensim import corpora
 from gensim.models.ldamodel import LdaModel
+
 # from gensim.parsing.preprocessing import (
 #     preprocess_string,
 #     strip_punctuation,
@@ -17,7 +19,7 @@ import json
 import warnings
 
 # Load spaCy's German model
-#nlp = spacy.load("de_core_news_lg")
+# nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
 
@@ -32,10 +34,10 @@ def spacy_ner(messages, parameters, nlp):
     # Calculate the average number of words in the messages
     avg_words = sum(len(message.split()) for message in messages) / len(messages)
     # Calculate the number of messages, which are processed in one batch
-    batch_size = round(avg_words * parameters['batch_size'])
+    batch_size = round(avg_words * parameters["batch_size"])
 
     results = []
-    # Process the messages in batches and extract 
+    # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
     for doc in nlp.pipe(messages, batch_size=batch_size):
         keywords = []
@@ -46,7 +48,16 @@ def spacy_ner(messages, parameters, nlp):
     return results
 
 
-def rake(messages, parameters):
+def rake(messages, parameters, stopwords):
+    """Extracts keywords from the messages using the RAKE algorithm."""
+
+    # Initialize RAKE with stopword list and length filters
+    r = Rake(
+        stopwords=stopwords,
+        min_length=parameters["min_length"],
+        max_length=parameters["max_length"],
+    )
+
     results = []
 
     for message in messages:
@@ -57,15 +68,12 @@ def rake(messages, parameters):
         original_case_keywords = [
             match.group()
             for score, kw in scored_keywords
-            if len(kw.split()) <= parameters["max_length"]
             for match in [re.search(re.escape(kw), message, flags=re.IGNORECASE)]
             if match
         ]
         results.append(original_case_keywords)
 
     return results
-
-
 
 
 # def cluster_messages(cleaned_texts, model):
@@ -92,9 +100,14 @@ def tf_IDF(cleaned_texts, parameters):
             message="The parameter 'token_pattern' will not be used since 'tokenizer' is not None'",
         )
 
-        # Create the TfidfVectorizer with a custom tokenizer and analyzer
+        # Create the TfidfVectorizer with a custom tokenizer, analyzer, and the new parameters
         vectorizer = TfidfVectorizer(
-            tokenizer=lambda text: text.split(), analyzer="word"
+            tokenizer=lambda text: text.split(),
+            analyzer="word",
+            max_df=parameters["max_df"],
+            min_df=parameters["min_df"],
+            ngram_range= (parameters["ngram_range1"], parameters["ngram_range2"]),
+            max_features=parameters["max_features"],
         )
 
         # Calculate the TF-IDF matrix
@@ -178,6 +191,16 @@ def LDA_topic_modeling(cleaned_texts, parameters):
 
 
 def NMF_topic_modeling(cleaned_texts, parameters):
+    """Extract topics from a list of cleaned texts using NMF."""
+    # TODO: consider adding more parameters
+    # init: This parameter controls the initialization method for the NMF algorithm. You can experiment with different initialization methods such as 'random', 'nndsvd', 'nndsvda', and 'nndsvdar' to see if they lead to better performance.
+    # solver: You can try both 'cd' (Coordinate Descent) and 'mu' (Multiplicative Update) solvers to see which one works better for your specific problem.
+    # beta_loss: This parameter is used only in the 'mu' solver and represents the type of beta divergence to minimize. You can experiment with 'frobenius', 'kullback-leibler', and 'itakura-saito' to see if they improve the algorithm's performance.
+    # tol: This parameter controls the tolerance for the stopping condition. You can try different values to see if they lead to better performance.
+
+
+
+
     # Define the number of topics you want to extract
     num_topics = int(len(cleaned_texts) * parameters["num_topics_multiplier"])
     if num_topics == 0:
@@ -188,7 +211,16 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
 
     # Create the NMF model and fit it to the TF-IDF matrix
-    nmf = NMF(n_components=num_topics, max_iter=parameters['max_iter'], random_state=42)
+    nmf = NMF(
+        n_components=num_topics,
+        max_iter=parameters["max_iter"],
+        tol=parameters["tol"],
+        alpha_W=parameters["alpha_W"],
+        alpha_H=parameters["alpha_H"],
+        l1_ratio=parameters["l1_ratio"],
+        random_state=42
+    )
+
     nmf.fit(tfidf_matrix)
 
     # Extract topics and associated words
@@ -461,9 +493,9 @@ def word_frequency(word_list, word_freq_dict):
     return entry_frequencies
 
 
-def extract_keywords(cleaned_texts, parameters, nlp):
+def extract_keywords(cleaned_texts, parameters, nlp, stopwords):
     """Extract keywords from the cleaned texts"""
-    rake_keywords = rake(cleaned_texts, parameters["rake"])
+    rake_keywords = rake(cleaned_texts, parameters["rake"], stopwords)
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp)
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
@@ -493,7 +525,9 @@ def store_keywords_in_messages(
         message["topic_suggestions"]["NMF"] = NMF_keywords[i]
 
 
-def extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy):
+def extract_common_topics(
+    filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+):
     """Extract common topics, using the function 'find_common_topics',
     from the messages and store them in the message dictionaries."""
     for message in filtered_messages:
@@ -535,7 +569,9 @@ def extract_common_topics(filtered_messages, first_letters, parameters, word_fre
         # print("")
 
 
-def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy):
+def extract_topic(
+    filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+):
     # add topic_suggestions key to each message
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
@@ -549,6 +585,7 @@ def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict, 
         if "common_topics" not in message["topic_suggestions"]
     ]
 
+    stopwords = nlp_spacy.Defaults.stop_words
     # get keywords for each message
     (
         spacy_keywords,
@@ -556,7 +593,12 @@ def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict, 
         tf_IDF_keywords,
         LDA_keywords,
         NMF_keywords,
-    ) = extract_keywords([text for _, text in cleaned_texts_with_indices], parameters, nlp_spacy)
+    ) = extract_keywords(
+        [text for _, text in cleaned_texts_with_indices],
+        parameters,
+        nlp_spacy,
+        stopwords,
+    )
     store_keywords_in_messages(
         filtered_messages,
         spacy_keywords,
@@ -567,7 +609,9 @@ def extract_topic(filtered_messages, first_letters, parameters, word_freq_dict, 
         cleaned_texts_with_indices,
         nlp_spacy,
     )
-    extract_common_topics(filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy)
+    extract_common_topics(
+        filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+    )
 
 
 def evaluate_topic_extraction(filtered_messages):

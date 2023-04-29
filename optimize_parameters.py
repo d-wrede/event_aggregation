@@ -22,13 +22,17 @@ import pstats
 import warnings
 import csv
 from sklearn.exceptions import ConvergenceWarning
+from matplotlib import pyplot as plt
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
+# only profile the objective function / keyword selection algorithm
 cProfile_switch = False
+# use the most recent best parameters as starting point
+best_switch = False
 
 # run file as: python3 optimize_parameters.py -Xfrozen_modules=off
 
@@ -67,15 +71,15 @@ def run_process_messages(parameters):
     end_time = time.time()
     perf_score = performance["common_topics"] - (end_time - start_time) * 25
 
-    # print("performance['common_topics']", performance['common_topics'])
-    # print("iteration time: ", end_time - start_time)
-    # print("combined perf_score: ", perf_score)
-    # Return the performance score for optimization
     return performance["common_topics"], -perf_score, end_time - start_time
 
 
 def lists_to_dicts(X, param_keys, data_types):
     dicts = []  # Initialize an empty list to store the dictionaries
+
+    # If there is only one set of parameter values, convert it to a list of a list
+    if isinstance(X[0], float):
+        X = [X]
 
     # Iterate through the list of parameter value lists
     for x in X:  
@@ -91,6 +95,10 @@ def lists_to_dicts(X, param_keys, data_types):
             # Assign the current parameter value to the appropriate key in the dictionary
             params[key1][key2] = x[i] if data_types[i] == "float" else int(x[i])
 
+        # ensure that tf_IDF ngram_range1 <= ngram_range2
+        params["tf_IDF"]["ngram_range1"] = min(
+            params["tf_IDF"]["ngram_range1"], params["tf_IDF"]["ngram_range2"]
+        )
         dicts.append(params)
     return dicts
 
@@ -124,7 +132,7 @@ def read_parameter_file(file_path):
     return param_keys, initial_values, lower_bounds, upper_bounds, data_types
 
 
-def get_best_opt_pars(file_path):
+def get_best_opt_pars(file_path, initial_values):
     with open(file_path, 'r') as f:
         lines = f.readlines()
 
@@ -144,8 +152,13 @@ def get_best_opt_pars(file_path):
     # Find the index of the lowest fitness value
     best_index = fitness_values.index(min(fitness_values))
 
-    # Return the corresponding xbest values
-    return xbest_values[best_index]
+    # Return the xbest values corresponding to the lowest fitness value
+    # if the number of parameters hasn't changed.
+    if len(initial_values) == len(xbest_values[best_index]):
+        return xbest_values[best_index]
+    else:
+        return initial_values
+
 
 
 # Read the parameter file
@@ -153,7 +166,9 @@ param_keys, initial_values, lower_bounds, upper_bounds, data_types = read_parame
     config_path
 )
 
-initial_values = get_best_opt_pars(xrecentbest_path)
+# use switch to load the best parameters from the previous run
+if best_switch:
+    initial_values = get_best_opt_pars(xrecentbest_path, initial_values)
 
 options = {
     "bounds": [lower_bounds, upper_bounds],
@@ -161,23 +176,23 @@ options = {
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 10000,
+    "maxiter": 5,
 }
 
 # Set the initial standard deviation for the optimization
 sigma0 = 0.5
 
 if cProfile_switch:
+    # Convert the LIST (only one here) of parameter values to a dictionary
+    param_dict = lists_to_dicts(initial_values, param_keys, data_types)[0]
+
     # Run the function with profiling and save the results to a file
-    cProfile.run("run_process_messages(initial_values)", filename=profile_filename)
+    cProfile.run("run_process_messages(param_dict)", filename=profile_filename)
 
     # Load the results from the file and sort them by cumulative time
     stats = pstats.Stats(profile_filename)
     stats.sort_stats("cumulative").print_stats(40)
     exit()
-# Call the CMA-ES optimization function with transformations
-# initial_values = [float(val) for val in initial_values]
-# es = cma.fmin(run_process_messages, initial_values, sigma0, options=myoptions)
 
 if __name__ == "__main__":
     # disable file validation to suppress warning messages
@@ -218,7 +233,7 @@ if __name__ == "__main__":
         if counter % 10 == 0:
             max_idx = np.argmax(runtimes)
             worst_individual = param_dicts[max_idx]
-            #lists_to_dicts(X, param_keys, data_types)
+
             # Run the function with profiling and save the results to a file
             cProfile.run(
                 "run_process_messages(worst_individual)", filename=profile_filename
@@ -227,20 +242,17 @@ if __name__ == "__main__":
             stats = pstats.Stats(profile_filename)
             # print the top 20 functions sorted by cumulative time
             stats.sort_stats("cumulative").print_stats(40)
-        es.disp()
-        # es.logger.add()
-        # es.logger.disp()
-        # print(f"round {counter} of {myoptions['maxiter']}")
+        #es.disp()
+        es.logger.add()
+        es.logger.disp()
+
         counter += 1
-    print("termination:", es.stop())
     es.result_pretty()
-    print("Optimized parameters:", es.result.xbest)
+    # Generate plots from the logged data
+    cma.plot()
+    input()
+
+
     # Close the multiprocessing pool
     pool.close()
     pool.join()
-
-    # Convert the optimized parameters to a dictionary
-    #parameters = update_parameters(es.result.xbest)
-    # Save the updated parameters in yaml format
-    with open("config/params_optimized.yaml", "w") as file:
-        yaml.dump(parameters, file)
