@@ -254,6 +254,10 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
         frequency_dict.update(word_frequency(new_keywords, word_freq_dict))
 
         for rank, keyword in enumerate(keywords):
+            # Skip empty keywords
+            if not keyword:
+                continue
+            # Calculate the weight based on the rank of the keyword
             highest = parameters["highest_rank"]
             rankweight = (highest - rank if rank < highest else 1) * parameters[
                 "rank_weight"
@@ -461,7 +465,6 @@ def extract_keywords(cleaned_texts, parameters, nlp):
     """Extract keywords from the cleaned texts"""
     rake_keywords = rake(cleaned_texts, parameters["rake"])
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp)
-    # TF-IDF, LDA, NMF
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
