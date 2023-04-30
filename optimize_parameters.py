@@ -47,7 +47,6 @@ with open(config_path, "r") as file:
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
     df = pd.read_csv("high_frequency04_decow_wordfreq_cistem.csv", index_col=["word"])
-    # print("Word frequency dictionary loaded in optimize_parameters.py")
     return df["freq"].to_dict()
 
 
@@ -62,7 +61,7 @@ nlp_spacy = spacy.load("de_core_news_lg", disable=["parser", "tagger"])
 
 
 # Define the objective function
-def run_process_messages(parameters):
+def objective_function(parameters):
     """Run the process_messages function with the given parameters"""
     start_time = time.time()
 
@@ -83,7 +82,6 @@ def lists_to_dicts(X, param_keys, data_types):
 
     # Iterate through the list of parameter value lists
     for x in X:  
-        # Initialize an empty dictionary to store the current parameter values
         params = {}
 
         # Iterate through the parameter values and their corresponding keys
@@ -160,6 +158,25 @@ def get_best_opt_pars(file_path, initial_values):
         return initial_values
 
 
+def scale_variables(initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+    """Scale the initial values to the range [cma_lower_bound, cma_upper_bound]"""
+    scaled_lower_bounds = [cma_lower_bound] * len(lower_bounds)
+    scaled_upper_bounds = [cma_upper_bound] * len(upper_bounds)
+    
+    scaled_initial_values = [((value - lb) / (ub - lb)) * (sub - slb) + slb for value, lb, ub, slb, sub in zip(initial_values, lower_bounds, upper_bounds, scaled_lower_bounds, scaled_upper_bounds)]
+
+    return scaled_initial_values
+
+
+def unscale_variables(scaled_variables, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+    """Unscale the variables from the range [cma_lower_bound, cma_upper_bound] to the range [lower_bound, upper_bound]"""
+    unscaled_variables = [
+        lb + (scaled_value - cma_lower_bound) * (ub - lb) / (cma_upper_bound - cma_lower_bound)
+        for scaled_value, lb, ub in zip(scaled_variables, lower_bounds, upper_bounds)
+    ]
+    return unscaled_variables
+
+
 
 # Read the parameter file
 param_keys, initial_values, lower_bounds, upper_bounds, data_types = read_parameter_file(
@@ -170,24 +187,30 @@ param_keys, initial_values, lower_bounds, upper_bounds, data_types = read_parame
 if best_switch:
     initial_values = get_best_opt_pars(xrecentbest_path, initial_values)
 
+# choose the standard bounds for the CMA-ES optimization
+cma_lower_bound = 0
+cma_upper_bound = 10
+
+# Set the initial standard deviation for the optimization
+# The optimum should lie within the scaled bounds, approximately within x0 ± 3*sigma0.
+sigma0 = 0.1 * (cma_upper_bound - cma_lower_bound)
+
 options = {
-    "bounds": [lower_bounds, upper_bounds],
+    "bounds": [[cma_lower_bound] * len(initial_values), [cma_upper_bound] * len(initial_values)],
     "popsize": 4,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 5,
+    "maxiter": 10,
+    'CMA_diagonal': True,
 }
-
-# Set the initial standard deviation for the optimization
-sigma0 = 0.5
 
 if cProfile_switch:
     # Convert the LIST (only one here) of parameter values to a dictionary
     param_dict = lists_to_dicts(initial_values, param_keys, data_types)[0]
 
     # Run the function with profiling and save the results to a file
-    cProfile.run("run_process_messages(param_dict)", filename=profile_filename)
+    cProfile.run("objective_function(param_dict)", filename=profile_filename)
 
     # Load the results from the file and sort them by cumulative time
     stats = pstats.Stats(profile_filename)
@@ -199,7 +222,10 @@ if __name__ == "__main__":
     os.environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
     # improve debugging accuracy
     freeze_support()
-    es = cma.CMAEvolutionStrategy(initial_values, sigma0, options)
+    # create scale coordinates
+    scaled_initial_values = scale_variables(initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+    # Instantiate the CMAEvolutionStrategy with the scaled initial values
+    es = cma.CMAEvolutionStrategy(scaled_initial_values, sigma0, options)
     # Initialize the multiprocessing pool
     pool = mp.Pool(n_cores)
     counter = 1
@@ -207,15 +233,26 @@ if __name__ == "__main__":
         # Request new list of candidate solutions
         X = es.ask()
 
+        # Apply the scale_coordinates transformation to the objective function
+        unscaled_candidates = [
+            unscale_variables(candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+            for candidate in X
+            ]
+
         # Turn list into parameter dictionaries
-        param_dicts = lists_to_dicts(X, param_keys, data_types)
+        param_dicts = lists_to_dicts(unscaled_candidates, param_keys, data_types)
 
         # initialize timing after cold start phase
         if counter == 2:
             main_start_time = time.time()
-
+        
         # evaluate function in parallel
-        results = pool.map_async(run_process_messages, param_dicts).get()
+        results = pool.map_async(objective_function, param_dicts).get()
+
+        # Extract the performance and runtime values from the results
+        performance, f_values, runtimes = zip(*results)
+        # Update the CMA-ES with the new objective function returns
+        es.tell(X, f_values)
 
         # Print the best performance and longest runtime every iteration
         if counter >= 2:
@@ -227,16 +264,13 @@ if __name__ == "__main__":
                 (time.time() - main_start_time) / (counter * options["popsize"]),
             )
 
-        performance, f_values, runtimes = zip(*results)
-        es.tell(X, f_values)
-
         if counter % 10 == 0:
             max_idx = np.argmax(runtimes)
             worst_individual = param_dicts[max_idx]
 
             # Run the function with profiling and save the results to a file
             cProfile.run(
-                "run_process_messages(worst_individual)", filename=profile_filename
+                "objective_function(worst_individual)", filename=profile_filename
             )
             # Load the results from the file and sort them by cumulative time
             stats = pstats.Stats(profile_filename)
@@ -248,9 +282,11 @@ if __name__ == "__main__":
 
         counter += 1
     es.result_pretty()
+    print("Optimization time: ", time.time() - main_start_time, "seconds")
     # Generate plots from the logged data
     cma.plot()
-    input()
+    plt.show()
+    input("Look at the plots and press enter to continue.")
 
 
     # Close the multiprocessing pool

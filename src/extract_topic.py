@@ -22,14 +22,13 @@ import warnings
 # nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
-
 r = Rake(language="german")
 import pandas as pd
 import nltk
 from src.extract_timestamp import filter_string
 
 
-def spacy_ner(messages, parameters, nlp):
+def spacy_ner(messages, parameters, nlp_spacy):
     """Extracts named entities from the messages using spaCy's NER model."""
     # Calculate the average number of words in the messages
     avg_words = sum(len(message.split()) for message in messages) / len(messages)
@@ -39,7 +38,7 @@ def spacy_ner(messages, parameters, nlp):
     results = []
     # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
-    for doc in nlp.pipe(messages, batch_size=batch_size):
+    for doc in nlp_spacy.pipe(messages, batch_size=batch_size):
         keywords = []
         for ent in doc.ents:
             if ent.label_ in ("LOC", "ORG", "MISC") and parameters.get(ent.label_):
@@ -48,8 +47,11 @@ def spacy_ner(messages, parameters, nlp):
     return results
 
 
-def rake(messages, parameters, stopwords):
+def rake(messages, parameters, nlp_spacy):
     """Extracts keywords from the messages using the RAKE algorithm."""
+    
+    # get stopwords from spacy
+    stopwords = nlp_spacy.Defaults.stop_words
 
     # Initialize RAKE with stopword list and length filters
     r = Rake(
@@ -371,9 +373,9 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     return most_common_terms
 
 
-def remove_stopwords(text, nlp):
+def remove_stopwords(text, nlp_spacy):
     # Tokenize the text using spaCy
-    doc = nlp(text)
+    doc = nlp_spacy(text)
 
     # Remove stop words and create a list of filtered tokens
     filtered_tokens = [token.text for token in doc if not token.is_stop]
@@ -422,14 +424,14 @@ def check_if_topic(filtered_messages):
             message["topic_suggestions"]["common_topics"] = topic
 
 
-def filter_keywords(keywords, nlp):
+def filter_keywords(keywords, nlp_spacy):
     filtered_keywords = []
     lowercase_keywords = set()
 
     # only keywords with min length of 3
     keywords = [keyword for keyword in keywords if len(keyword) > 2]
     # Create spaCy tokens from the keywords
-    tokens = [doc[0] for doc in nlp.pipe(keywords)]
+    tokens = [doc[0] for doc in nlp_spacy.pipe(keywords)]
 
     for i, keyword in enumerate(keywords):
         # Find all sets of digits in the keyword
@@ -493,10 +495,10 @@ def word_frequency(word_list, word_freq_dict):
     return entry_frequencies
 
 
-def extract_keywords(cleaned_texts, parameters, nlp, stopwords):
+def extract_keywords(cleaned_texts, parameters, nlp_spacy):
     """Extract keywords from the cleaned texts"""
-    rake_keywords = rake(cleaned_texts, parameters["rake"], stopwords)
-    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp)
+    rake_keywords = rake(cleaned_texts, parameters["rake"], nlp_spacy)
+    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp_spacy)
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)
@@ -585,7 +587,6 @@ def extract_topic(
         if "common_topics" not in message["topic_suggestions"]
     ]
 
-    stopwords = nlp_spacy.Defaults.stop_words
     # get keywords for each message
     (
         spacy_keywords,
@@ -597,7 +598,6 @@ def extract_topic(
         [text for _, text in cleaned_texts_with_indices],
         parameters,
         nlp_spacy,
-        stopwords,
     )
     store_keywords_in_messages(
         filtered_messages,
