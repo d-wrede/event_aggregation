@@ -1,11 +1,11 @@
-parameter1                  , parameter              ,initial_value,lower_bound,upper_bound,data_type
-keyword_selection_parameters, spacy_keywords_weight  ,4.84         ,0          ,20         ,float
-keyword_selection_parameters, rake_keywords_weight   ,7.84         ,0          ,20         ,float
-keyword_selection_parameters, tf_IDF_keywords_weight ,13.40        ,0          ,20         ,float
-keyword_selection_parameters, LDA_keywords_weight    ,2.55         ,0          ,20         ,float
-keyword_selection_parameters, NMF_keywords_weight    ,8.91         ,0          ,20         ,float
-keyword_selection_parameters, frequency_threshold1   ,0.44         ,0.4        ,1          ,float
-keyword_selection_parameters, frequency_threshold2   ,1.50         ,1          ,1.5        ,float
+index   , parameter1                  , parameter              ,initial_value,lower_bound,upper_bound,data_type, description
+1       , keyword_selection_parameters, spacy_keywords_weight  ,4.84         ,0          ,20         ,float
+2       , keyword_selection_parameters, rake_keywords_weight   ,7.84         ,0          ,20         ,float
+3       , keyword_selection_parameters, tf_IDF_keywords_weight ,13.40        ,0          ,20         ,float
+4       , keyword_selection_parameters, LDA_keywords_weight    ,2.55         ,0          ,20         ,float
+5       , keyword_selection_parameters, NMF_keywords_weight    ,8.91         ,0          ,20         ,float
+6       , keyword_selection_parameters, frequency_threshold1   ,0.44         ,0.4        ,1          ,float
+7, keyword_selection_parameters, frequency_threshold2   ,1.50         ,1          ,1.5        ,float
 keyword_selection_parameters, frequency_weight1      ,-76.62       ,-300       ,0          ,float
 keyword_selection_parameters, frequency_weight2      ,-152.16      ,-300       ,-50        ,float
 keyword_selection_parameters, digit_weight           ,-300.72      ,-500       ,0          ,float
@@ -36,4 +36,3 @@ NMF                         , l1_ratio               , 0.5        , 0          ,
 NMF                         , tol                     , 1e-4       , 1e-6       , 1e-2       , float
 NMF                         , alpha_W                 , 0.0        , 0          , 1          , float
 NMF                         , alpha_H                 , 0.0        , 0          , 1          , float
-NMF                         , l1_ratio                , 0.5        , 0          , 1          , float

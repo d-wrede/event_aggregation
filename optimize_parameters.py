@@ -27,19 +27,19 @@ from matplotlib import pyplot as plt
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 # Set the path to the file containing the most recent best parameters
-xrecentbest_path = "outcmaes/xrecentbest.dat"
+xrecentbest_path = "outcmaes/xrecentbest_lastrun.dat"
 profile_filename = "profile_results.prof"
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
 # use the most recent best parameters as starting point
-best_switch = False
+best_switch = True
 
 # run file as: python3 optimize_parameters.py -Xfrozen_modules=off
 
 # Set the number of cores to use for multiprocessing
-n_cores = 4
+n_cores = 15
 
-config_path = "config/params.csv"
+config_path = "config/params_indexed.csv"
 with open(config_path, "r") as file:
     parameters = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -122,11 +122,11 @@ def read_parameter_file(file_path):
         for row in csvreader:
             # Remove spaces from each element of the row
             row = [element.strip() for element in row]
-            param_keys.append((row[0], row[1]))
-            initial_values.append(float(row[2]))
-            lower_bounds.append(float(row[3]))
-            upper_bounds.append(float(row[4]))
-            data_types.append(row[5])
+            param_keys.append((row[1], row[2]))
+            initial_values.append(float(row[3]))
+            lower_bounds.append(float(row[4]))
+            upper_bounds.append(float(row[5]))
+            data_types.append(row[6])
     return param_keys, initial_values, lower_bounds, upper_bounds, data_types
 
 
@@ -153,8 +153,10 @@ def get_best_opt_pars(file_path, initial_values):
     # Return the xbest values corresponding to the lowest fitness value
     # if the number of parameters hasn't changed.
     if len(initial_values) == len(xbest_values[best_index]):
+        print("set initial values to best parameters from previous run:", initial_values)
         return xbest_values[best_index]
     else:
+        print("number of parameters has changed, using initial values:", initial_values)
         return initial_values
 
 
@@ -197,12 +199,12 @@ sigma0 = 0.1 * (cma_upper_bound - cma_lower_bound)
 
 options = {
     "bounds": [[cma_lower_bound] * len(initial_values), [cma_upper_bound] * len(initial_values)],
-    "popsize": 4,
+    "popsize": 30,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 10,
-    'CMA_diagonal': True,
+    # "maxiter": 10,
+    #'CMA_diagonal': True,
 }
 
 if cProfile_switch:
@@ -233,7 +235,7 @@ if __name__ == "__main__":
         # Request new list of candidate solutions
         X = es.ask()
 
-        # Apply the scale_coordinates transformation to the objective function
+        # unscale the candidates to translate into objective function space
         unscaled_candidates = [
             unscale_variables(candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
             for candidate in X
