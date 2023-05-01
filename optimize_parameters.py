@@ -23,6 +23,8 @@ import warnings
 import csv
 from sklearn.exceptions import ConvergenceWarning
 from matplotlib import pyplot as plt
+import pprint
+
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -179,6 +181,64 @@ def unscale_variables(scaled_variables, lower_bounds, upper_bounds, cma_lower_bo
     return unscaled_variables
 
 
+def optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+    """Optimize the parameters using the CMA-ES algorithm"""
+
+    # Request new list of candidate solutions
+    X = es.ask()
+
+    # Apply the scale_coordinates transformation to the objective function
+    unscaled_candidates = [
+        unscale_variables(candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+        for candidate in X
+        ]
+
+    # Turn list into parameter dictionaries
+    param_dicts = lists_to_dicts(unscaled_candidates, param_keys, data_types)
+    
+    # evaluate function in parallel
+    results = pool.map_async(objective_function, param_dicts).get()
+
+    # Extract the performance and runtime values from the results
+    performance, f_values, runtimes = zip(*results)
+    # Update the CMA-ES with the new objective function returns
+    es.tell(X, f_values)
+    return performance, runtimes, param_dicts
+
+
+def run_cProfile(param_dict, top_n=20):
+    """Run the objective function with profiling, save the results to a file 
+    and print the top_n functions sorted by cumulative time"""
+    profile_filename = "profile_results.prof"
+    #parameters = parameters.copy()
+
+    # Run the function with profiling and save the results to a file
+    # cProfile.run(
+    #     f"exec(lambda: objective_function(param_dict))", filename=profile_filename
+    # )
+    # Create a profiler object
+    profiler = cProfile.Profile()
+
+    # Run the function with profiling using runcall method
+    profiler.runcall(objective_function, param_dict)
+
+    # Save the results to a file
+    profiler.dump_stats(profile_filename)
+
+    # Load the results from the file and sort them by cumulative time
+    stats = pstats.Stats(profile_filename)
+    # print the top_n functions sorted by cumulative time
+    stats.sort_stats("cumulative").print_stats(top_n)
+
+
+def print_performance(performance, runtimes, param_dicts):
+    # Print the best performance and longest runtime every iteration
+    print("Best performance:", max(performance))
+    print("longest runtime:", max(runtimes))
+    print(
+        "sec/f_eval: ",
+        (time.time() - main_start_time) / (counter * options["popsize"]),
+    )
 
 # Read the parameter file
 param_keys, initial_values, lower_bounds, upper_bounds, data_types = read_parameter_file(
@@ -210,87 +270,67 @@ options = {
 if cProfile_switch:
     # Convert the LIST (only one here) of parameter values to a dictionary
     param_dict = lists_to_dicts(initial_values, param_keys, data_types)[0]
-
-    # Run the function with profiling and save the results to a file
-    cProfile.run("objective_function(param_dict)", filename=profile_filename)
-
-    # Load the results from the file and sort them by cumulative time
-    stats = pstats.Stats(profile_filename)
-    stats.sort_stats("cumulative").print_stats(40)
+    run_cProfile(param_dict, 20)
     exit()
 
 if __name__ == "__main__":
+
     # disable file validation to suppress warning messages
     os.environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
     # improve debugging accuracy
     freeze_support()
+
     # create scale coordinates
     scaled_initial_values = scale_variables(initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+
     # Instantiate the CMAEvolutionStrategy with the scaled initial values
     es = cma.CMAEvolutionStrategy(scaled_initial_values, sigma0, options)
+
     # Initialize the multiprocessing pool
     pool = mp.Pool(n_cores)
+
     counter = 1
-    while not es.stop():
-        # Request new list of candidate solutions
-        X = es.ask()
+    try:
+        print("starting optimization")
+        while not es.stop():
 
-        # unscale the candidates to translate into objective function space
-        unscaled_candidates = [
-            unscale_variables(candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
-            for candidate in X
-            ]
+            # initialize timing after cold start phase
+            if counter == 2:
+                main_start_time = time.time()
+            
+            performance, runtimes, param_dicts = optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
 
-        # Turn list into parameter dictionaries
-        param_dicts = lists_to_dicts(unscaled_candidates, param_keys, data_types)
-
-        # initialize timing after cold start phase
-        if counter == 2:
-            main_start_time = time.time()
-        
-        # evaluate function in parallel
-        results = pool.map_async(objective_function, param_dicts).get()
-
-        # Extract the performance and runtime values from the results
-        performance, f_values, runtimes = zip(*results)
-        # Update the CMA-ES with the new objective function returns
-        es.tell(X, f_values)
-
-        # Print the best performance and longest runtime every iteration
-        if counter >= 2:
             # Print the best performance and longest runtime every iteration
-            print("Best performance:", max(performance))
-            print("longest runtime:", max(runtimes))
-            print(
-                "sec/f_eval: ",
-                (time.time() - main_start_time) / (counter * options["popsize"]),
-            )
+            if counter >= 2:
+                print_performance(performance, runtimes, counter)
 
-        if counter % 10 == 0:
-            max_idx = np.argmax(runtimes)
-            worst_individual = param_dicts[max_idx]
+            if counter % 1 == 0:
+                max_idx = np.argmax(runtimes)
+                param_dict_max_runtimes = param_dicts[max_idx]
+                run_cProfile(param_dict_max_runtimes, 20)
 
-            # Run the function with profiling and save the results to a file
-            cProfile.run(
-                "objective_function(worst_individual)", filename=profile_filename
-            )
-            # Load the results from the file and sort them by cumulative time
-            stats = pstats.Stats(profile_filename)
-            # print the top 20 functions sorted by cumulative time
-            stats.sort_stats("cumulative").print_stats(40)
-        #es.disp()
-        es.logger.add()
-        es.logger.disp()
+            es.logger.add()
+            es.logger.disp()
 
-        counter += 1
-    es.result_pretty()
-    print("Optimization time: ", time.time() - main_start_time, "seconds")
-    # Generate plots from the logged data
-    cma.plot()
-    plt.show()
-    input("Look at the plots and press enter to continue.")
+            counter += 1
+    except KeyboardInterrupt:
+        print("Optimization interrupted by user.")
+    finally:
+        es.result_pretty()
+        print("Optimization time: ", time.time() - main_start_time, "seconds")
 
+        # Close the multiprocessing pool
+        pool.terminate() #pool.close()
+        pool.join()
 
-    # Close the multiprocessing pool
-    pool.close()
-    pool.join()
+        # Generate plots from the logged data
+        cma.plot()
+        plt.show()
+        input("Look at the plots and press enter to continue.")
+
+        # Try pretty print
+        # Obtain the result dictionary
+        result_dict = es.result()
+
+        # Pretty print the result dictionary
+        pprint.pprint(result_dict)
