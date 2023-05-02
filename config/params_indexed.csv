@@ -9,7 +9,7 @@ index, parameter1                 , parameter2              , initial_value, low
 7   , keyword_selection_parameters, frequency_weight1       , -100         , -250       , -100       , float    , Weight for the first frequency threshold
 8   , keyword_selection_parameters, frequency_weight2       , -200         , -400       , -200        , float    , Weight for the second frequency threshold
 9   , keyword_selection_parameters, digit_weight            , -170         , -250       , -70          , float    , Weight for keywords containing digits
-10  , keyword_selection_parameters, highest_rank            , 36           , 20         , 40         , int      , Highest rank considered in the keyword selection. Bounds set close, due to refactor plans
+10  , keyword_selection_parameters, highest_rank            , 36           , 20         , 40         , int      , Highest rank considered in the keyword selection. Bounds set close due to refactor plans.
 11  , keyword_selection_parameters, rank_weight             , 3            , 2          , 5          , float    , Weight for the rank of keywords
 12  , keyword_selection_parameters, position_weight         , 300          , 250        , 350        , float    , Weight for the position of keywords in the text
 13  , keyword_selection_parameters, position_ratio_weight   , 1.65         , 1          , 2          , float    , Weight for the position ratio of keywords in the text
