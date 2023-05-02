@@ -94,42 +94,34 @@ def calculate_proposed_bounds(df_in, stddevs):
             return "opt"
         elif column_name == f"p_{bound_type}_bound_min":
             return "min"
+        elif column_name == f"p_{bound_type}_bound_max":
+            return "max"
         else:
             return "standard"
 
     # # use the maximum of the calculated bounds
     # df['p_u_bound'] = df[['p_u_bound_opt', 'p_u_bound_max', 'p_u_bound']].max(axis=1)
     # Correct the lower bounds, if necessary
-    optscale = 0.02
-    minmaxscale = 0.01
+    optscale = 1000
+    minmaxscale = 200
     df["min_dist"] = df["opt_val"] - df["p_l_bound_init"]
     condition1 = df["min_dist"] < optscale * df["adjusted_range"]
-    print("condition1:", condition1)
+    
     df.loc[condition1, "p_l_bound_opt"] = df["p_l_bound_init"] - df["min_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
 
-
     df["min_dist"] = df["min"] - df["p_l_bound_init"]
     condition2 = df["min_dist"] < minmaxscale * df["adjusted_range"]
-    print("condition2:", condition2)
+    
     df.loc[condition2, "p_l_bound_min"] = df["p_l_bound_init"] - df["min_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
 
     # Use the minimum of the calculated bounds
     df["p_l_bound"] = df[["p_l_bound_opt", "p_l_bound_min", "p_l_bound_init"]].min(axis=1)
-    # leave message in column 'remarks', which bound was used
-    # df["remark"] = (
-    #     df[["p_l_bound_opt", "p_l_bound_min", "p_l_bound_init"]]
-    #     .idxmin(axis=1)
-    #     .apply(
-    #         lambda x: "opt"
-    #         if x == "p_l_bound_opt"
-    #         else ("min" if x == "p_l_bound_min" else "standard")
-    #     )
-    # )
-
+    
+    # leave a remark, which bound was used
     df["remark_l"] = df[["p_l_bound_opt", "p_l_bound_min", "p_l_bound_init"]].apply(lambda row: create_remark(row, 'l'), axis=1)
 
 
@@ -140,7 +132,7 @@ def calculate_proposed_bounds(df_in, stddevs):
     # If optimized value is too close to the upper bound
     df["max_dist"] = df["p_u_bound_init"] - df["opt_val"]
     condition3 = df["max_dist"] < optscale * df["adjusted_range"]
-    print("condition3:", condition3)
+    
     df.loc[condition3, "p_u_bound_opt"] = df["u_bound"] + df["max_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
@@ -148,13 +140,15 @@ def calculate_proposed_bounds(df_in, stddevs):
     # If maximum value is too close to the upper bound
     df["max_dist"] = df["u_bound"] - df["max"]
     condition4 = df["max_dist"] < minmaxscale * df["adjusted_range"]
-    print("condition4:", condition4)
+    
     df.loc[condition4, "p_u_bound_max"] = df["u_bound"] + df["max_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
 
     # Use the maximum of the calculated bounds
     df["p_u_bound"] = df[["p_u_bound_opt", "p_u_bound_max", "p_u_bound_init"]].max(axis=1)
+
+    # leave a remark, which bound was used
     df["remark_u"] = df[["p_u_bound_opt", "p_u_bound_max", "p_u_bound_init"]].apply(lambda row: create_remark(row, 'u'), axis=1)
     
     # # Correct the lower bounds, if necessary
