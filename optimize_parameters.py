@@ -319,6 +319,20 @@ if __name__ == "__main__":
         es.result_pretty()
         print("Optimization time: ", time.time() - main_start_time, "seconds")
 
+        # save optimization results to file
+        with open('outcmaes/optimization_summary.json', 'w') as f:
+            summary_data = {
+                "stop": es.stop(),
+                "result": {
+                    "x_best": es.result[0].tolist(),
+                    "f_best": es.result[1],
+                    "evaluations": es.result[3],
+                    "stop": es.result[6],
+                },
+            }
+            json.dump(summary_data, f, indent=4)
+
+
         # Close the multiprocessing pool
         pool.terminate() #pool.close()
         pool.join()
@@ -327,6 +341,8 @@ if __name__ == "__main__":
         cma.plot()
         plt.show()
         input("Look at the plots and press enter to continue.")
+
+
 
         # Try pretty print
         # Obtain the result dictionary
