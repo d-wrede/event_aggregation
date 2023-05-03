@@ -29,19 +29,19 @@ import pprint
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 # Set the path to the file containing the most recent best parameters
-xrecentbest_path = "outcmaes/xrecentbest_lastrun.dat"
+xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
 # use the most recent best parameters as starting point
-best_switch = True
+best_switch = False
 
 # run file as: python3 optimize_parameters.py -Xfrozen_modules=off
 
 # Set the number of cores to use for multiprocessing
 n_cores = 15
 
-config_path = "config/params_indexed.csv"
+config_path = "config/params_tuned.csv"
 with open(config_path, "r") as file:
     parameters = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -83,13 +83,13 @@ def lists_to_dicts(X, param_keys, data_types):
         X = [X]
 
     # Iterate through the list of parameter value lists
-    for x in X:  
+    for x in X:
         params = {}
 
         # Iterate through the parameter values and their corresponding keys
         for i, (key1, key2) in enumerate(param_keys):
             # If the first key is not in the dictionary, create a new entry
-            if (key1 not in params):  
+            if key1 not in params:
                 params[key1] = {}
 
             # Assign the current parameter value to the appropriate key in the dictionary
@@ -133,7 +133,7 @@ def read_parameter_file(file_path):
 
 
 def get_best_opt_pars(file_path, initial_values):
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         lines = f.readlines()
 
     # Remove the first line (header)
@@ -155,33 +155,59 @@ def get_best_opt_pars(file_path, initial_values):
     # Return the xbest values corresponding to the lowest fitness value
     # if the number of parameters hasn't changed.
     if len(initial_values) == len(xbest_values[best_index]):
-        print("set initial values to best parameters from previous run:", initial_values)
+        print(
+            "set initial values to best parameters from previous run:", initial_values
+        )
         return xbest_values[best_index]
     else:
         print("number of parameters has changed, using initial values:", initial_values)
         return initial_values
 
 
-def scale_variables(initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+def scale_variables(
+    initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
+):
     """Scale the initial values to the range [cma_lower_bound, cma_upper_bound]"""
     scaled_lower_bounds = [cma_lower_bound] * len(lower_bounds)
     scaled_upper_bounds = [cma_upper_bound] * len(upper_bounds)
-    
-    scaled_initial_values = [((value - lb) / (ub - lb)) * (sub - slb) + slb for value, lb, ub, slb, sub in zip(initial_values, lower_bounds, upper_bounds, scaled_lower_bounds, scaled_upper_bounds)]
+
+    scaled_initial_values = [
+        ((value - lb) / (ub - lb)) * (sub - slb) + slb
+        for value, lb, ub, slb, sub in zip(
+            initial_values,
+            lower_bounds,
+            upper_bounds,
+            scaled_lower_bounds,
+            scaled_upper_bounds,
+        )
+    ]
 
     return scaled_initial_values
 
 
-def unscale_variables(scaled_variables, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+def unscale_variables(
+    scaled_variables, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
+):
     """Unscale the variables from the range [cma_lower_bound, cma_upper_bound] to the range [lower_bound, upper_bound]"""
     unscaled_variables = [
-        lb + (scaled_value - cma_lower_bound) * (ub - lb) / (cma_upper_bound - cma_lower_bound)
+        lb
+        + (scaled_value - cma_lower_bound)
+        * (ub - lb)
+        / (cma_upper_bound - cma_lower_bound)
         for scaled_value, lb, ub in zip(scaled_variables, lower_bounds, upper_bounds)
     ]
     return unscaled_variables
 
 
-def optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound):
+def optimize_parameters(
+    es,
+    param_keys,
+    data_types,
+    lower_bounds,
+    upper_bounds,
+    cma_lower_bound,
+    cma_upper_bound,
+):
     """Optimize the parameters using the CMA-ES algorithm"""
 
     # Request new list of candidate solutions
@@ -189,13 +215,15 @@ def optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, 
 
     # Apply the scale_coordinates transformation to the objective function
     unscaled_candidates = [
-        unscale_variables(candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+        unscale_variables(
+            candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
+        )
         for candidate in X
-        ]
+    ]
 
     # Turn list into parameter dictionaries
     param_dicts = lists_to_dicts(unscaled_candidates, param_keys, data_types)
-    
+
     # evaluate function in parallel
     results = pool.map_async(objective_function, param_dicts).get()
 
@@ -207,10 +235,10 @@ def optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, 
 
 
 def run_cProfile(param_dict, top_n=20):
-    """Run the objective function with profiling, save the results to a file 
+    """Run the objective function with profiling, save the results to a file
     and print the top_n functions sorted by cumulative time"""
     profile_filename = "profile_results.prof"
-    #parameters = parameters.copy()
+    # parameters = parameters.copy()
 
     # Run the function with profiling and save the results to a file
     # cProfile.run(
@@ -240,10 +268,15 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
+
 # Read the parameter file
-param_keys, initial_values, lower_bounds, upper_bounds, data_types = read_parameter_file(
-    config_path
-)
+(
+    param_keys,
+    initial_values,
+    lower_bounds,
+    upper_bounds,
+    data_types,
+) = read_parameter_file(config_path)
 
 # use switch to load the best parameters from the previous run
 if best_switch:
@@ -255,11 +288,14 @@ cma_upper_bound = 10
 
 # Set the initial standard deviation for the optimization
 # The optimum should lie within the scaled bounds, approximately within x0 ± 3*sigma0.
-sigma0 = 0.1 * (cma_upper_bound - cma_lower_bound)
+sigma0 = 0.3 * (cma_upper_bound - cma_lower_bound)
 
 options = {
-    "bounds": [[cma_lower_bound] * len(initial_values), [cma_upper_bound] * len(initial_values)],
-    "popsize": 30,
+    "bounds": [
+        [cma_lower_bound] * len(initial_values),
+        [cma_upper_bound] * len(initial_values),
+    ],
+    "popsize": 45,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
@@ -274,14 +310,15 @@ if cProfile_switch:
     exit()
 
 if __name__ == "__main__":
-
     # disable file validation to suppress warning messages
     os.environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
     # improve debugging accuracy
     freeze_support()
 
     # create scale coordinates
-    scaled_initial_values = scale_variables(initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+    scaled_initial_values = scale_variables(
+        initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
+    )
 
     # Instantiate the CMAEvolutionStrategy with the scaled initial values
     es = cma.CMAEvolutionStrategy(scaled_initial_values, sigma0, options)
@@ -293,18 +330,25 @@ if __name__ == "__main__":
     try:
         print("starting optimization")
         while not es.stop():
-
             # initialize timing after cold start phase
             if counter == 2:
                 main_start_time = time.time()
-            
-            performance, runtimes, param_dicts = optimize_parameters(es, param_keys, data_types, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound)
+
+            performance, runtimes, param_dicts = optimize_parameters(
+                es,
+                param_keys,
+                data_types,
+                lower_bounds,
+                upper_bounds,
+                cma_lower_bound,
+                cma_upper_bound,
+            )
 
             # Print the best performance and longest runtime every iteration
             if counter >= 2:
                 print_performance(performance, runtimes, counter)
 
-            if counter % 1 == 0:
+            if counter % 20 == 0:
                 max_idx = np.argmax(runtimes)
                 param_dict_max_runtimes = param_dicts[max_idx]
                 run_cProfile(param_dict_max_runtimes, 20)
@@ -320,7 +364,7 @@ if __name__ == "__main__":
         print("Optimization time: ", time.time() - main_start_time, "seconds")
 
         # save optimization results to file
-        with open('outcmaes/optimization_summary.json', 'w') as f:
+        with open("outcmaes/optimization_summary.json", "w") as f:
             summary_data = {
                 "stop": es.stop(),
                 "result": {
@@ -332,17 +376,14 @@ if __name__ == "__main__":
             }
             json.dump(summary_data, f, indent=4)
 
-
         # Close the multiprocessing pool
-        pool.terminate() #pool.close()
+        pool.terminate()  # pool.close()
         pool.join()
 
         # Generate plots from the logged data
         cma.plot()
         plt.show()
         input("Look at the plots and press enter to continue.")
-
-
 
         # Try pretty print
         # Obtain the result dictionary
