@@ -64,11 +64,11 @@ def rake(messages, parameters, nlp_spacy):
     """Extracts keywords from the messages using the RAKE algorithm."""
     
     # get stopwords from spacy
-    stopwords = nlp_spacy.Defaults.stop_words
+    # stopwords = nlp_spacy.Defaults.stop_words
 
     # Initialize RAKE with stopword list and length filters
     r = Rake(
-        stopwords=stopwords,
+        #stopwords=stopwords,
         min_length = 1, # parameters["min_length"],
         max_length = parameters["max_length"],
     )
@@ -131,28 +131,31 @@ def tf_IDF(cleaned_texts, parameters):
         # Get the feature names (words)
         feature_names = vectorizer.get_feature_names_out()
 
-    min_keywords = parameters["min_keywords"]
-    max_keywords = parameters["max_keywords"]
+    # min_keywords = parameters["min_keywords"]
+    # max_keywords = parameters["max_keywords"]
 
     keywords = []
 
     for index, text in enumerate(cleaned_texts):
-        # Number of top keywords to extract from each text
-        num_keywords = int(len(text.split()) * parameters["keywords_multiplier"])
+        # # Number of top keywords to extract from each text
+        # num_keywords = int(parameters["num_keywords"])
 
-        # Clip the value to the defined boundaries
-        num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
+        # # Clip the value to the defined boundaries
+        # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
-        # Get the indices of the top num_keywords features in the text
-        top_feature_indices = (
-            tfidf_matrix[index].toarray()[0].argsort()[-num_keywords:][::-1]
-        )
+        # # Get the indices of the top num_keywords features in the text
+        # top_feature_indices = (
+        #     tfidf_matrix[index].toarray()[0].argsort()[-num_keywords:][::-1]
+        # )
 
         # Get the top keywords and their corresponding TF-IDF scores
+        # top_keywords_and_scores = [
+        #     (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
+        # ]
         top_keywords_and_scores = [
-            (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
+            (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
         ]
-
+        
         original_case_keywords = []
         for keyword, score in top_keywords_and_scores:
             # Escape any special characters in the keyword for regex search
@@ -164,8 +167,10 @@ def tf_IDF(cleaned_texts, parameters):
                 # Append the matched original keyword to the list
                 original_case_keywords.append(match.group())
         original_case_keywords = [
-            keyword.replace(",", " ").strip() for keyword in original_case_keywords
+            (keyword.replace(",", " ").strip(), score)
+            for keyword, score in top_keywords_and_scores
         ]
+
         keywords.append(original_case_keywords)
     return keywords
 

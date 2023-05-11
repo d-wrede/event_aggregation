@@ -21,8 +21,8 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 19, rake                        ,max_length,3.29,3.0,4, int      , Maximum length of keywords for RAKE keyword extraction
 20, tf_IDF                      ,min_keywords,4.99,2.88,5.0, int      , Minimum number of keywords for TF-IDF keyword extraction
 21, tf_IDF                      ,max_keywords,4.0,1.61,6.0, int      , Maximum number of keywords for TF-IDF keyword extraction
-22, tf_IDF                      ,keywords_multiplier,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
-23, tf_IDF                      ,min_df,2.31,2.0,2.96, int      , Minimum document frequency for TF-IDF keyword extraction
+22, tf_IDF                      ,num_keywords,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
+23, tf_IDF                      ,min_df,0.5,0.0,1.0, float      , Minimum document frequency for TF-IDF keyword extraction
 24, tf_IDF                      ,max_df,0.31,0.3,0.78, float    , Maximum document frequency for TF-IDF keyword extraction
 25, tf_IDF                      ,ngram_range1,2.42,2.0,2.97, int      , Lower bound of n-gram range for TF-IDF keyword extraction
 26, tf_IDF                      ,ngram_range2,1.28,1.0,2.07, int      , Upper bound of n-gram range for TF-IDF keyword extraction
@@ -37,4 +37,5 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 35, NMF                         ,alpha_W,0.77,0.6,0.95, float    , Alpha value for W matrix in NMF keyword extraction
 36, NMF                         ,alpha_H,0.27,0.1,0.64, float    , Alpha value for H matrix in NMF keyword extraction
 
-parameters["min_length"],
+rake: parameters["min_length"],
+tfIDF: parameters["num_keywords"], parameters["min_keywords"], parameters["max_keywords"]
