@@ -21,11 +21,11 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 19, rake                        ,max_length,3.29,3.0,4, int      , Maximum length of keywords for RAKE keyword extraction
 20, tf_IDF                      ,min_keywords,4.99,2.88,5.0, int      , Minimum number of keywords for TF-IDF keyword extraction
 21, tf_IDF                      ,max_keywords,4.0,1.61,6.0, int      , Maximum number of keywords for TF-IDF keyword extraction
-22, tf_IDF                      ,num_keywords,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
+22, tf_IDF                      ,num_topics_multiplier,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
 23, tf_IDF                      ,min_df,0.5,0.0,1.0, float      , Minimum document frequency for TF-IDF keyword extraction
-24, tf_IDF                      ,max_df,0.31,0.3,0.78, float    , Maximum document frequency for TF-IDF keyword extraction
-25, tf_IDF                      ,ngram_range1,2.42,2.0,2.97, int      , Lower bound of n-gram range for TF-IDF keyword extraction
-26, tf_IDF                      ,ngram_range2,1.28,1.0,2.07, int      , Upper bound of n-gram range for TF-IDF keyword extraction
+24, tf_IDF                      ,max_df,0.31,0,1, float    , Maximum document frequency for TF-IDF keyword extraction
+25, tf_IDF                      ,ngram_range1,1,1.0,2.0, int      , Lower bound of n-gram range for TF-IDF keyword extraction
+26, tf_IDF                      ,ngram_range2,2,1.0,2.0, int      , Upper bound of n-gram range for TF-IDF keyword extraction
 27, tf_IDF                      ,max_features,199.13,106.14,200.0, int      , Maximum features considered in TF-IDF keyword extraction
 28, LDA                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in LDA keyword extraction
 29, LDA                         ,passes,2.84,2.0,6.84, int      , Number of passes in LDA keyword extraction
@@ -39,3 +39,4 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 
 rake: parameters["min_length"],
 tfIDF: parameters["num_keywords"], parameters["min_keywords"], parameters["max_keywords"]
+LDA: add this one parameters['num_words']

@@ -138,23 +138,25 @@ def tf_IDF(cleaned_texts, parameters):
 
     for index, text in enumerate(cleaned_texts):
         # # Number of top keywords to extract from each text
-        # num_keywords = int(parameters["num_keywords"])
+        num_keywords = int(len(text) * parameters["num_topics_multiplier"])
+        if num_keywords == 0:
+            num_keywords = 1
 
         # # Clip the value to the defined boundaries
         # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
-        # # Get the indices of the top num_keywords features in the text
-        # top_feature_indices = (
-        #     tfidf_matrix[index].toarray()[0].argsort()[-num_keywords:][::-1]
-        # )
+        # Get the indices of the top num_keywords features in the text
+        top_feature_indices = (
+            tfidf_matrix[index].toarray()[0].argsort()[-num_keywords:][::-1]
+        )
 
         # Get the top keywords and their corresponding TF-IDF scores
-        # top_keywords_and_scores = [
-        #     (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
-        # ]
         top_keywords_and_scores = [
-            (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
+            (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
         ]
+        # top_keywords_and_scores = [
+        #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
+        # ]
         
         original_case_keywords = []
         for keyword, score in top_keywords_and_scores:
@@ -198,14 +200,14 @@ def LDA_topic_modeling(cleaned_texts, parameters):
 
     # Parse the topics to get lists of keywords
     parsed_topics = []
-    topics = model.print_topics(num_words=5)
+    topics = model.print_topics(num_words=parameters['num_words'])
     for topic in topics:
         topic_keywords = topic[1]
-        keywords_list = [
-            keyword_prob.split("*")[1].strip('" ')
+        keywords = [
+            (keyword_prob.split("*")[1].strip('" '), float(keyword_prob.split("*")[0]))
             for keyword_prob in topic_keywords.split(" + ")
         ]
-        parsed_topics.append(keywords_list)
+        parsed_topics.append(keywords)
 
     return parsed_topics
 
@@ -217,9 +219,6 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     # solver: You can try both 'cd' (Coordinate Descent) and 'mu' (Multiplicative Update) solvers to see which one works better for your specific problem.
     # beta_loss: This parameter is used only in the 'mu' solver and represents the type of beta divergence to minimize. You can experiment with 'frobenius', 'kullback-leibler', and 'itakura-saito' to see if they improve the algorithm's performance.
     # tol: This parameter controls the tolerance for the stopping condition. You can try different values to see if they lead to better performance.
-
-
-
 
     # Define the number of topics you want to extract
     num_topics = int(len(cleaned_texts) * parameters["num_topics_multiplier"])
