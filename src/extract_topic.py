@@ -29,21 +29,34 @@ from src.extract_timestamp import filter_string
 
 
 def spacy_ner(messages, parameters, nlp_spacy):
-    """Extracts named entities from the messages using spaCy's NER model."""
+    """Extracts named entities from the messages using spaCy's NER model.
+        input: messages: list of strings
+        input: parameters: dictionary
+        input: nlp_spacy: spacy model
+        output: list of lists of tuples (keyword, score) for each message
+    """
     # Calculate the average number of words in the messages
     avg_words = sum(len(message.split()) for message in messages) / len(messages)
     # Calculate the number of messages, which are processed in one batch
-    batch_size = round(avg_words * parameters["batch_size"])
+    
+    # uncommented for know
+    #batch_size = round(avg_words * parameters["batch_size"])
 
     results = []
     # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
-    for doc in nlp_spacy.pipe(messages, batch_size=batch_size):
+    for doc in nlp_spacy.pipe(messages) #, batch_size=batch_size):
         keywords = []
         for ent in doc.ents:
-            if ent.label_ in ("LOC", "ORG", "MISC") and parameters.get(ent.label_):
-                keywords.append(ent.text)
-        results.append(keywords)
+            # Iterate over parameters in descending order
+            if ent.label_in ("LOC", "ORG", "MISC"):
+                score = parameters[ent.label_] * ent.confidence
+                keyword_tuple = (ent.text, score)
+                keywords.append(keyword_tuple)
+
+        # Sort the keywords based on the score in descending order
+        sorted_keywords = sorted(keywords, key=lambda x: x[1], reverse=True)
+        results.append(sorted_keywords)
     return results
 
 
