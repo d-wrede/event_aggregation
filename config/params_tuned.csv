@@ -18,7 +18,7 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 16, spacy                       ,MISC,0.49,0.0,0.91, int      , Flag to include miscellaneous entities in Spacy keyword extraction
 17, spacy                       ,batch_size,14.0,1.0,69.54, int      , Batch size for Spacy keyword extraction
 18, rake                        ,min_length,1.0,1.0,1.48, int      , Minimum length of keywords for RAKE keyword extraction
-19, rake                        ,max_length,3.29,2.0,5.94, int      , Maximum length of keywords for RAKE keyword extraction
+19, rake                        ,max_length,3.29,3.0,4, int      , Maximum length of keywords for RAKE keyword extraction
 20, tf_IDF                      ,min_keywords,4.99,2.88,5.0, int      , Minimum number of keywords for TF-IDF keyword extraction
 21, tf_IDF                      ,max_keywords,4.0,1.61,6.0, int      , Maximum number of keywords for TF-IDF keyword extraction
 22, tf_IDF                      ,keywords_multiplier,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
@@ -36,3 +36,5 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 34, NMF                         ,tol,0.0,0.0,0.01, float    , Tolerance value for NMF keyword extraction
 35, NMF                         ,alpha_W,0.77,0.6,0.95, float    , Alpha value for W matrix in NMF keyword extraction
 36, NMF                         ,alpha_H,0.27,0.1,0.64, float    , Alpha value for H matrix in NMF keyword extraction
+
+parameters["min_length"],

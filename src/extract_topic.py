@@ -69,8 +69,8 @@ def rake(messages, parameters, nlp_spacy):
     # Initialize RAKE with stopword list and length filters
     r = Rake(
         stopwords=stopwords,
-        min_length=parameters["min_length"],
-        max_length=parameters["max_length"],
+        min_length = 1, # parameters["min_length"],
+        max_length = parameters["max_length"],
     )
 
     results = []
@@ -81,7 +81,7 @@ def rake(messages, parameters, nlp_spacy):
 
         # Filter out keywords longer than the max_length and find the original case
         original_case_keywords = [
-            match.group()
+            (match.group(), score)
             for score, kw in scored_keywords
             for match in [re.search(re.escape(kw), message, flags=re.IGNORECASE)]
             if match
