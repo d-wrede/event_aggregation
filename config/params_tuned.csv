@@ -32,11 +32,16 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 30, NMF                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in NMF keyword extraction
 31, NMF                         ,max_iter,60.64,32.96,93.4, int      , Maximum iterations for NMF keyword extraction
 32, NMF                         ,alpha,0.6,0.28,0.6, float    , Alpha value for NMF keyword extraction
-33, NMF                         ,l1_ratio,0.49,0.19,0.6, float    , L1 regularization ratio for NMF keyword extraction
-34, NMF                         ,tol,0.0,0.0,0.01, float    , Tolerance value for NMF keyword extraction
-35, NMF                         ,alpha_W,0.77,0.6,0.95, float    , Alpha value for W matrix in NMF keyword extraction
-36, NMF                         ,alpha_H,0.27,0.1,0.64, float    , Alpha value for H matrix in NMF keyword extraction
+33, NMF                         ,l1_ratio,0.49,0.19,0.6, float    , L1 regularization ratio for NMF keyword extraction. Default = 0.0 with 0 <= l1_ratio <= 1
+34, NMF                         ,tol,1,0.0,2, float    , Tolerance value for NMF keyword extraction
+35, NMF                         ,alpha_W,0.77,0.6,0.95, float    , Alpha value for W matrix in NMF keyword extraction. Default 0
+36, NMF                         ,alpha_H,0.27,0.1,0.64, float    , Alpha value for H matrix in NMF keyword extraction. Default same as alpha_W
 
 rake: parameters["min_length"],
 tfIDF: parameters["num_keywords"], parameters["min_keywords"], parameters["max_keywords"]
 LDA: add this one parameters['num_words']
+
+nmf: not used: alpha
+    drop: alpha_W=parameters["alpha_W"],
+        alpha_H=parameters["alpha_H"],
+        l1_ratio=parameters["l1_ratio"],

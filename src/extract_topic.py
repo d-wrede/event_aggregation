@@ -45,7 +45,7 @@ def spacy_ner(messages, parameters, nlp_spacy):
     results = []
     # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
-    for doc in nlp_spacy.pipe(messages) #, batch_size=batch_size):
+    for doc in nlp_spacy.pipe(messages): #, batch_size=batch_size):
         keywords = []
         for ent in doc.ents:
             # Iterate over parameters in descending order
@@ -231,12 +231,13 @@ def NMF_topic_modeling(tfidf_matrix, parameters):
 
     # Create the NMF model and fit it to the TF-IDF matrix
     nmf = NMF(
+        # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
         max_iter=parameters["max_iter"],
-        tol=parameters["tol"],
-        alpha_W=parameters["alpha_W"],
-        alpha_H=parameters["alpha_H"],
-        l1_ratio=parameters["l1_ratio"],
+        tol=parameters["tol"]/10000,
+        #alpha_W=parameters["alpha_W"],
+        #alpha_H=parameters["alpha_H"],
+        #l1_ratio=parameters["l1_ratio"],
         random_state=42
     )
 
