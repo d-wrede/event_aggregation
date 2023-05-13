@@ -266,20 +266,29 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     return topics
 
 
-def sort_keywords_by_input_order(lda_keywords, cleaned_texts):
-    sorted_lda_keywords = [[] for _ in range(len(cleaned_texts))]
+def sort_keywords_by_input_order(topic_keywords, cleaned_texts):
+    """
+    Sorts the keywords extracted by a topic modeling algorithm based on the input order of the documents.
+    Args:
+        topic_keywords (list): A list of lists containing (keyword, probability) tuples for each topic.
+        documents (list): A list of documents or texts.
+    Returns:
+        list: A list of lists containing the sorted keywords for each document along with their probabilities.
+    """
+    sorted_keywords = [[] for _ in range(len(cleaned_texts))]
     used_keywords = set()
 
-    for topic_keywords in lda_keywords:
-        for keyword in topic_keywords:
+    for keywords in topic_keywords:
+        for keyword, probability in keywords:
             if keyword not in used_keywords:
-                for i, cleaned_text in enumerate(cleaned_texts):
-                    if keyword in cleaned_text:
-                        sorted_lda_keywords[i].append(keyword)
+                for i, document in enumerate(cleaned_texts):
+                    if keyword in document:
+                        sorted_keywords[i].append((keyword, probability))
                         used_keywords.add(keyword)
                         break
 
-    return sorted_lda_keywords
+    return sorted_keywords
+
 
 
 def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
@@ -303,10 +312,11 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             continue
         algorithm_weight = weights[algorithm]
         # ensure to only search for keywords that are not already in the frequency dictionary
-        new_keywords = [key for key in keywords if key and key not in frequency_dict]
+        new_keywords = [key for key in keywords if key[0] and key[0] not in frequency_dict]
         frequency_dict.update(word_frequency(new_keywords, word_freq_dict))
 
-        for rank, keyword in enumerate(keywords):
+        for rank, key_tuple in enumerate(keywords):
+            keyword, score = key_tuple
             # Skip empty keywords
             if not keyword:
                 continue
@@ -315,6 +325,8 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             rankweight = (highest - rank if rank < highest else 1) * parameters[
                 "rank_weight"
             ]
+
+            score_weight = score * algorithm_weight
 
             # Calculate the frequency-based weight
             frequency_threshold1 = parameters["frequency_threshold1"] * 10**6
@@ -348,7 +360,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
                 # Assign a score based on the calculated weights
                 score = (
                     rankweight
-                    + algorithm_weight
+                    + score_weight
                     + position_weight
                     + frequency_weight
                     + digit_weight
@@ -535,7 +547,23 @@ def preprocess_text(text_list, nlp):
 
 
 def extract_keywords(cleaned_texts, parameters, nlp_spacy):
-    """Extract keywords from the cleaned texts"""
+    """
+    Extracts keywords using various methods from a list of cleaned texts.
+
+    Args:
+        cleaned_texts (list): A list of cleaned texts.
+        parameters (dict): A dictionary containing the parameters for each keyword extraction method.
+        nlp_spacy: The spaCy language model for preprocessing.
+
+    Returns:
+        tuple: A tuple containing the extracted keywords from different methods:
+            - spacy_keywords (list): Keywords extracted using spaCy NER.
+            - rake_keywords (list): Keywords extracted using RAKE.
+            - tf_IDF_keywords (list): Keywords extracted using TF-IDF.
+            - LDA_keywords (list): Keywords extracted using LDA and sorted by input order.
+            - NMF_keywords (list): Keywords extracted using NMF and sorted by input order.
+
+    """
     rake_keywords = rake(cleaned_texts, parameters["rake"], nlp_spacy)
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp_spacy)
 
@@ -570,7 +598,7 @@ def store_keywords_in_messages(
 
 
 def extract_common_topics(
-    filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+    filtered_messages, parameters, word_freq_dict, nlp_spacy
 ):
     """Extract common topics, using the function 'find_common_topics',
     from the messages and store them in the message dictionaries."""
@@ -582,7 +610,7 @@ def extract_common_topics(
 
         common_topics = find_common_topics(
             message["topic_suggestions"],
-            filter_string(message["message"][:first_letters]),
+            filter_string(message["message"][:parameters['extract_topic']['first_letters']]),
             parameters["keyword_selection_parameters"],
             word_freq_dict,
         )
@@ -614,7 +642,7 @@ def extract_common_topics(
 
 
 def extract_topic(
-    filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+    filtered_messages, parameters, word_freq_dict, nlp_spacy
 ):
     # add topic_suggestions key to each message
     for message in filtered_messages:
@@ -624,7 +652,7 @@ def extract_topic(
 
     # Clean and preprocess the texts
     cleaned_texts_with_indices = [
-        (idx, filter_string(message["message"][:first_letters]))
+        (idx, filter_string(message["message"][:parameters['extract_topic']['first_letters']]))
         for idx, message in enumerate(filtered_messages)
         if "common_topics" not in message["topic_suggestions"]
     ]
@@ -652,7 +680,7 @@ def extract_topic(
         nlp_spacy,
     )
     extract_common_topics(
-        filtered_messages, first_letters, parameters, word_freq_dict, nlp_spacy
+        filtered_messages, parameters, word_freq_dict, nlp_spacy
     )
 
 

@@ -113,7 +113,7 @@ def process_messages(word_freq_dict, parameters, messages, nlp_spacy):
     # ]
     filtered_messages = messages[:number_of_messages]
     ### extract topic ###
-    extract_topic(filtered_messages, first_letters, copy(parameters), word_freq_dict, nlp_spacy)
+    extract_topic(filtered_messages, copy(parameters), word_freq_dict, nlp_spacy)
 
     # filtered_messages_with_selected_keys = [
     # {key: message[key] for key in ('message', 'topic_suggestions', 'timestamps')}

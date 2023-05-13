@@ -1,4 +1,5 @@
 index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bound, data_type, description
+0, extract_topic                ,first_letters,300,200,700, int, number of letters to be analyzed for keyword extraction from beginning
 0, keyword_selection_parameters,spacy_keywords_weight,1.81,0.0,6.57, float    , Weight for keywords extracted using Spacy
 1, keyword_selection_parameters,rake_keywords_weight,6.76,0.0,14.62, float    , Weight for keywords extracted using RAKE
 2, keyword_selection_parameters,tf_IDF_keywords_weight,15.04,8.93,20.0, float    , Weight for keywords extracted using TF-IDF
@@ -26,7 +27,7 @@ index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bo
 27, tf_IDF                      ,max_features,199.13,106.14,200.0, int      , Maximum features considered in TF-IDF keyword extraction
 28, LDA                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in LDA keyword extraction
 29, LDA                         ,passes,2.84,2.0,6.84, int      , Number of passes in LDA keyword extraction
-00, LDA                         ,num_words,3,1,5, int, number of words per topic
+00, LDA                         ,num_words,3,1,10, int, number of words per topic
 30, NMF                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in NMF keyword extraction
 31, NMF                         ,max_iter,60.64,32.96,93.4, int      , Maximum iterations for NMF keyword extraction
 34, NMF                         ,tol,1,0.0,2, float    , Tolerance value for NMF keyword extraction
