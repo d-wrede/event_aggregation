@@ -22,6 +22,7 @@ import warnings
 # nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
+
 r = Rake(language="german")
 import pandas as pd
 import nltk
@@ -30,26 +31,26 @@ from src.extract_timestamp import filter_string
 
 def spacy_ner(messages, parameters, nlp_spacy):
     """Extracts named entities from the messages using spaCy's NER model.
-        input: messages: list of strings
-        input: parameters: dictionary
-        input: nlp_spacy: spacy model
-        output: list of lists of tuples (keyword, score) for each message
+    input: messages: list of strings
+    input: parameters: dictionary
+    input: nlp_spacy: spacy model
+    output: list of lists of tuples (keyword, score) for each message
     """
     # Calculate the average number of words in the messages
     avg_words = sum(len(message.split()) for message in messages) / len(messages)
     # Calculate the number of messages, which are processed in one batch
-    
+
     # uncommented for know
-    #batch_size = round(avg_words * parameters["batch_size"])
+    # batch_size = round(avg_words * parameters["batch_size"])
 
     results = []
     # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
-    for doc in nlp_spacy.pipe(messages): #, batch_size=batch_size):
+    for doc in nlp_spacy.pipe(messages):  # , batch_size=batch_size):
         keywords = []
         for ent in doc.ents:
             # Iterate over parameters in descending order
-            if ent.label_in ("LOC", "ORG", "MISC"):
+            if ent.label_in("LOC", "ORG", "MISC"):
                 score = parameters[ent.label_] * ent.confidence
                 keyword_tuple = (ent.text, score)
                 keywords.append(keyword_tuple)
@@ -62,15 +63,15 @@ def spacy_ner(messages, parameters, nlp_spacy):
 
 def rake(messages, parameters, nlp_spacy):
     """Extracts keywords from the messages using the RAKE algorithm."""
-    
+
     # get stopwords from spacy
     stopwords = nlp_spacy.Defaults.stop_words
 
     # Initialize RAKE with stopword list and length filters
     r = Rake(
         stopwords=stopwords,
-        min_length = 1, # parameters["min_length"],
-        max_length = parameters["max_length"],
+        min_length=1,  # parameters["min_length"],
+        max_length=parameters["max_length"],
     )
 
     results = []
@@ -121,7 +122,7 @@ def tf_IDF(cleaned_texts, parameters):
             analyzer="word",
             max_df=parameters["max_df"],
             min_df=parameters["min_df"],
-            ngram_range= (parameters["ngram_range1"], parameters["ngram_range2"]),
+            ngram_range=(parameters["ngram_range1"], parameters["ngram_range2"]),
             max_features=parameters["max_features"],
         )
 
@@ -157,7 +158,7 @@ def tf_IDF(cleaned_texts, parameters):
         # top_keywords_and_scores = [
         #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
         # ]
-        
+
         original_case_keywords = []
         for keyword, score in top_keywords_and_scores:
             # Escape any special characters in the keyword for regex search
@@ -174,7 +175,7 @@ def tf_IDF(cleaned_texts, parameters):
         ]
 
         keywords.append(original_case_keywords)
-    return keywords, tfidf_matrix
+    return keywords
 
 
 def LDA_topic_modeling(cleaned_texts, parameters):
@@ -200,7 +201,7 @@ def LDA_topic_modeling(cleaned_texts, parameters):
 
     # Parse the topics to get lists of keywords
     parsed_topics = []
-    topics = model.print_topics(num_words=parameters['num_words'])
+    topics = model.print_topics(num_words=parameters["num_words"])
     for topic in topics:
         topic_keywords = topic[1]
         keywords = [
@@ -212,7 +213,7 @@ def LDA_topic_modeling(cleaned_texts, parameters):
     return parsed_topics
 
 
-def NMF_topic_modeling(tfidf_matrix, parameters):
+def NMF_topic_modeling(cleaned_texts, parameters):
     """Extract topics from a list of cleaned texts using NMF."""
     # TODO: consider adding more parameters
     # init: This parameter controls the initialization method for the NMF algorithm. You can experiment with different initialization methods such as 'random', 'nndsvd', 'nndsvda', and 'nndsvdar' to see if they lead to better performance.
@@ -226,19 +227,19 @@ def NMF_topic_modeling(tfidf_matrix, parameters):
         num_topics = 1
 
     # # Create a TF-IDF vectorizer
-    # vectorizer = TfidfVectorizer()
-    # tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
 
     # Create the NMF model and fit it to the TF-IDF matrix
     nmf = NMF(
         # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
         max_iter=parameters["max_iter"],
-        tol=parameters["tol"]/10000,
-        #alpha_W=parameters["alpha_W"],
-        #alpha_H=parameters["alpha_H"],
-        #l1_ratio=parameters["l1_ratio"],
-        random_state=42
+        tol=parameters["tol"] / 10000,
+        # alpha_W=parameters["alpha_W"],
+        # alpha_H=parameters["alpha_H"],
+        # l1_ratio=parameters["l1_ratio"],
+        random_state=42,
     )
 
     nmf.fit(tfidf_matrix)
@@ -517,19 +518,19 @@ def preprocess_text(text_list, nlp):
     """Preprocess the texts using spaCy's NLP pipeline
     removing stopwords and applying lemmatization"""
     preprocessed_texts = []
-    
+
     for text in text_list:
         # Apply SpaCy NLP pipeline to the text
         doc = nlp(text)
-        
+
         # Remove stopwords and apply lemmatization
         lemmatized_tokens = [token.lemma_ for token in doc if not token.is_stop]
-        
+
         # Join the lemmatized tokens back into a single string
-        preprocessed_text = ' '.join(lemmatized_tokens)
-        
+        preprocessed_text = " ".join(lemmatized_tokens)
+
         preprocessed_texts.append(preprocessed_text)
-    
+
     return preprocessed_texts
 
 
@@ -537,11 +538,11 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy):
     """Extract keywords from the cleaned texts"""
     rake_keywords = rake(cleaned_texts, parameters["rake"], nlp_spacy)
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], nlp_spacy)
-    
+
     # remove stopwords and perform lemmatization
     cleaned_texts = preprocess_text(cleaned_texts, nlp_spacy)
-    tf_IDF_keywords, tfidf_matrix = tf_IDF(cleaned_texts, parameters["tf_IDF"])
-    NMF_keywords = NMF_topic_modeling(tfidf_matrix, parameters["NMF"])
+    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
+    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
     NMF_keywords = sort_keywords_by_input_order(NMF_keywords, cleaned_texts)
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
     LDA_keywords = sort_keywords_by_input_order(LDA_keywords, cleaned_texts)

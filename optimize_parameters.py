@@ -42,9 +42,9 @@ best_switch = False
 n_cores = 15
 
 config_path = "config/params_tuned.csv"
-with open(config_path, "r") as file:
-    parameters = yaml.load(file, Loader=yaml.FullLoader)
-
+# with open(config_path, "r") as file:
+#     parameters = yaml.load(file, Loader=yaml.FullLoader)
+# print(parameters)
 
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
@@ -295,7 +295,7 @@ options = {
         [cma_lower_bound] * len(initial_values),
         [cma_upper_bound] * len(initial_values),
     ],
-    "popsize": 45,
+    "popsize": 15,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
