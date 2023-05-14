@@ -33,7 +33,8 @@ def spacy_ner(messages, parameters, nlp_spacy):
     # Calculate the average number of words in the messages
     avg_words = sum(len(message.split()) for message in messages) / len(messages)
     # Calculate the number of messages, which are processed in one batch
-    batch_size = round(avg_words * parameters["batch_size"])
+    #batch_size = round(avg_words * parameters["batch_size"])
+    batch_size = 1000
 
     results = []
     # Process the messages in batches and extract
