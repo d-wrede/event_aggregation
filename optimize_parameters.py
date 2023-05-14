@@ -59,8 +59,6 @@ json_filename = "chosen_topics.json"
 with open(json_filename, "r", encoding="utf-8") as f:
     messages = json.load(f)
 
-nlp_spacy = spacy.load("de_core_news_lg", disable=["parser", "tagger"])
-
 
 # Define the objective function
 def objective_function(parameters):
@@ -68,9 +66,9 @@ def objective_function(parameters):
     start_time = time.time()
 
     # Call the process_messages function
-    performance = process_messages(word_freq_dict, parameters, messages, nlp_spacy)
+    performance = process_messages(word_freq_dict, parameters, messages)
     end_time = time.time()
-    perf_score = performance["common_topics"] - (end_time - start_time) * 25
+    perf_score = performance["common_topics"] - (end_time - start_time) * 0.25
 
     return performance["common_topics"], -perf_score, end_time - start_time
 
@@ -288,18 +286,18 @@ cma_upper_bound = 10
 
 # Set the initial standard deviation for the optimization
 # The optimum should lie within the scaled bounds, approximately within x0 ± 3*sigma0.
-sigma0 = 0.3 * (cma_upper_bound - cma_lower_bound)
+sigma0 = 0.4 * (cma_upper_bound - cma_lower_bound)
 
 options = {
     "bounds": [
         [cma_lower_bound] * len(initial_values),
         [cma_upper_bound] * len(initial_values),
     ],
-    "popsize": 15,
+    "popsize": 30,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    # "maxiter": 10,
+    "maxiter": 100,
     #'CMA_diagonal': True,
 }
 
