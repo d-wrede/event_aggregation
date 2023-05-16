@@ -41,7 +41,7 @@ best_switch = False
 # Set the number of cores to use for multiprocessing
 n_cores = 15
 
-config_path = "config/params_tuned.csv"
+config_path = "config/params_tuned_230515.csv"
 # with open(config_path, "r") as file:
 #     parameters = yaml.load(file, Loader=yaml.FullLoader)
 # print(parameters)
@@ -94,9 +94,9 @@ def lists_to_dicts(X, param_keys, data_types):
             params[key1][key2] = x[i] if data_types[i] == "float" else int(x[i])
 
         # ensure that tf_IDF ngram_range1 <= ngram_range2
-        params["tf_IDF"]["ngram_range1"] = min(
-            params["tf_IDF"]["ngram_range1"], params["tf_IDF"]["ngram_range2"]
-        )
+        # params["tf_IDF"]["ngram_range1"] = min(
+        #     params["tf_IDF"]["ngram_range1"], params["tf_IDF"]["ngram_range2"]
+        # )
         dicts.append(params)
     return dicts
 
@@ -110,6 +110,7 @@ def read_parameter_file(file_path):
     upper_bounds = []
     param_keys = []
     data_types = []
+    opt_switch = []
 
     # Read the CSV file
     with open(file_path, "r") as csvfile:
@@ -293,11 +294,11 @@ options = {
         [cma_lower_bound] * len(initial_values),
         [cma_upper_bound] * len(initial_values),
     ],
-    "popsize": 30,
+    "popsize": 15,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 100,
+    "maxiter": 1000,
     #'CMA_diagonal': True,
 }
 

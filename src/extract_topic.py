@@ -75,7 +75,7 @@ def spacy_ner(messages, parameters, spacy_docs):
 def rake(messages, parameters, rake_object):
     """Extracts keywords from the messages using the RAKE algorithm."""
 
-    rake_object.max_length = parameters["max_length"]
+    # rake_object.max_length = parameters["max_length"]
     results = []
 
     for message in messages:
@@ -124,8 +124,8 @@ def tf_IDF(cleaned_texts, parameters):
             analyzer="word",
             # max_df=parameters["max_df"],
             # min_df=parameters["min_df"],
-            ngram_range=(parameters["ngram_range1"], parameters["ngram_range2"]),
-            max_features=parameters["max_features"],
+            # ngram_range=(parameters["ngram_range1"], parameters["ngram_range2"]),
+            # max_features=parameters["max_features"],
         )
 
         # Calculate the TF-IDF matrix
@@ -140,7 +140,7 @@ def tf_IDF(cleaned_texts, parameters):
 
     for index, text in enumerate(cleaned_texts):
         # # Number of top keywords to extract from each text
-        num_keywords = int(len(text) * parameters["num_topics_multiplier"])
+        num_keywords = int(len(text) * 1.8) #parameters["num_topics_multiplier"])
         if num_keywords == 0:
             num_keywords = 1
 
@@ -190,19 +190,19 @@ def LDA_topic_modeling(cleaned_texts, parameters):
     corpus = [dictionary.doc2bow(text) for text in texts]
 
     # Train the LDA model
-    num_topics = int(len(cleaned_texts) * parameters["num_topics_multiplier"])
+    num_topics = int(len(cleaned_texts)) #* parameters["num_topics_multiplier"])
     if num_topics == 0:
         num_topics = 1
     model = LdaModel(
         corpus=corpus,
         id2word=dictionary,
         num_topics=num_topics,
-        passes=parameters["passes"],
+        passes=15, #parameters["passes"],
     )
 
     # Parse the topics to get lists of keywords
     parsed_topics = []
-    topics = model.print_topics(num_words=parameters["num_words"])
+    topics = model.print_topics() #num_words=parameters["num_words"])
     for topic in topics:
         topic_keywords = topic[1]
         keywords = [
@@ -227,7 +227,7 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
 
     # Define the number of topics you want to extract
-    num_topics = int(tfidf_matrix.shape[0] * parameters["num_topics_multiplier"])
+    num_topics = int(tfidf_matrix.shape[0] * 2) #* parameters["num_topics_multiplier"])
     if num_topics == 0:
         num_topics = 1
 
@@ -235,8 +235,8 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     nmf = NMF(
         # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
-        max_iter=parameters["max_iter"],
-        tol=parameters["tol"] / 10000,
+        max_iter=150, #parameters["max_iter"],
+        # tol=parameters["tol"] / 10000,
         # alpha_W=parameters["alpha_W"],
         # alpha_H=parameters["alpha_H"],
         # l1_ratio=parameters["l1_ratio"],
@@ -616,24 +616,29 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
             - NMF_keywords (list): Keywords extracted using NMF and sorted by input order.
 
     """
-    rake_keywords = rake(cleaned_texts, parameters["rake"], rake_object)
+    # print("rake")
+    rake_keywords = rake(cleaned_texts, parameters, rake_object) #["rake"]
     spacy_docs = nlp_spacy.pipe(cleaned_texts)  # , batch_size=batch_size)
+    # print("spacy")
     spacy_docs = list(nlp_spacy.pipe(cleaned_texts))
-    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs)
+    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs) #
 
     # remove stopwords and perform lemmatization
     # spacy_docs = nlp_spacy.pipe(cleaned_texts)
     cleaned_texts = preprocess_text(cleaned_texts, spacy_docs)
-    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
-    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
+    # print("tfidf")
+    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters) #["tf_IDF"]
+    # print("NMF")
+    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters) #["NMF"]
     NMF_keywords = sort_keywords_by_input_order(
         NMF_keywords, cleaned_texts
     )  # move into function
-    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
+    # print("LDA")
+    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters) #["LDA"]
     LDA_keywords = sort_keywords_by_input_order(
         LDA_keywords, cleaned_texts
     )  # move into function
-
+    # print("done")
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
 
 
