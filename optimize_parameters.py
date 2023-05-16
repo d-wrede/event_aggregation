@@ -104,13 +104,19 @@ def lists_to_dicts(X, param_keys, data_types):
 def read_parameter_file(file_path):
     """Read the parameter file and return the parameter keys, initial values,
     lower and upper bounds"""
-    # Initialize empty lists
-    initial_values = []
-    lower_bounds = []
-    upper_bounds = []
-    param_keys = []
-    data_types = []
-    opt_switch = []
+    # Initialize empty dicts of lists
+    opt_vars = {
+        "param_keys": [],
+        "initial_values": [],
+        "lower_bounds": [],
+        "upper_bounds": [],
+        "data_types": [],
+    }
+    const_params = {
+        "param_keys": [],
+        "initial_values": [],
+        "data_types": [],
+    }
 
     # Read the CSV file
     with open(file_path, "r") as csvfile:
@@ -123,12 +129,23 @@ def read_parameter_file(file_path):
         for row in csvreader:
             # Remove spaces from each element of the row
             row = [element.strip() for element in row]
-            param_keys.append((row[1], row[2]))
-            initial_values.append(float(row[3]))
-            lower_bounds.append(float(row[4]))
-            upper_bounds.append(float(row[5]))
-            data_types.append(row[6])
-    return param_keys, initial_values, lower_bounds, upper_bounds, data_types
+            param_key = (row[1], row[2])
+            initial_value = float(row[3])
+            data_type = row[6]
+            opt_switch = row[7]
+
+            if opt_switch == "opt":
+                opt_vars["param_keys"].append(param_key)
+                opt_vars["initial_values"].append(initial_value)
+                opt_vars["lower_bounds"].append(float(row[4]))
+                opt_vars["upper_bounds"].append(float(row[5]))
+                opt_vars["data_types"].append(data_type)
+            elif opt_switch == "const":
+                const_params["param_keys"].append(param_key)
+                const_params["initial_values"].append(initial_value)
+                const_params["data_types"].append(data_type)
+        
+    return opt_vars, const_params
 
 
 def get_best_opt_pars(file_path, initial_values):
@@ -270,16 +287,14 @@ def print_performance(performance, runtimes, param_dicts):
 
 # Read the parameter file
 (
-    param_keys,
-    initial_values,
-    lower_bounds,
-    upper_bounds,
-    data_types,
+    opt_vars,
+    const_params
 ) = read_parameter_file(config_path)
 
 # use switch to load the best parameters from the previous run
 if best_switch:
-    initial_values = get_best_opt_pars(xrecentbest_path, initial_values)
+    # TODO: Remove or update to handle const_params split
+    initial_opt_values = get_best_opt_pars(xrecentbest_path, initial_opt_values)
 
 # choose the standard bounds for the CMA-ES optimization
 cma_lower_bound = 0
@@ -291,8 +306,8 @@ sigma0 = 0.4 * (cma_upper_bound - cma_lower_bound)
 
 options = {
     "bounds": [
-        [cma_lower_bound] * len(initial_values),
-        [cma_upper_bound] * len(initial_values),
+        [cma_lower_bound] * len(opt_vars['initial_opt_values']),
+        [cma_upper_bound] * len(opt_vars['initial_opt_values']),
     ],
     "popsize": 15,
     "verb_disp": 1,
@@ -303,8 +318,9 @@ options = {
 }
 
 if cProfile_switch:
+    # TODO: Remove or update to handle const_params split
     # Convert the LIST (only one here) of parameter values to a dictionary
-    param_dict = lists_to_dicts(initial_values, param_keys, data_types)[0]
+    param_dict = lists_to_dicts(initial_opt_values, param_keys, data_types)[0]
     run_cProfile(param_dict, 20)
     exit()
 
@@ -315,12 +331,10 @@ if __name__ == "__main__":
     freeze_support()
 
     # create scale coordinates
-    scaled_initial_values = scale_variables(
-        initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
-    )
+    scaled_init_opt_values = scale_variables(opt_vars)
 
     # Instantiate the CMAEvolutionStrategy with the scaled initial values
-    es = cma.CMAEvolutionStrategy(scaled_initial_values, sigma0, options)
+    es = cma.CMAEvolutionStrategy(scaled_init_opt_values, sigma0, options)
 
     # Initialize the multiprocessing pool
     pool = mp.Pool(n_cores)
@@ -341,6 +355,7 @@ if __name__ == "__main__":
                 upper_bounds,
                 cma_lower_bound,
                 cma_upper_bound,
+                const_params
             )
 
             # Print the best performance and longest runtime every iteration
