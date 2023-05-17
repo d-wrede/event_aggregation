@@ -292,6 +292,30 @@ def sort_keywords_by_input_order(topic_keywords, cleaned_texts):
 
 
 def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
+    """
+    Finds the most common topics in a text based on the results of several keyword extraction algorithms.
+
+    The function assigns weights to keywords based on different factors such as their frequency,
+    position in the text, and whether they contain digits. It then sums up the weighted scores for 
+    each keyword across all algorithms, and returns a list of the most common topics, each represented 
+    by the longest form of the keyword found.
+
+    Args:
+        keyword_dicts (dict): A dictionary where each key is the name of a keyword extraction algorithm 
+                              and the value is a list of tuples, each containing a keyword and its score.
+        text (str): The text from which the keywords were extracted.
+        parameters (dict): A dictionary of parameters used for weighing the keywords. Includes the 
+                           weight assigned to each algorithm and various factors used in the calculation 
+                           of keyword weights.
+        word_freq_dict (dict): A dictionary where each key is a word and the value is its frequency 
+                               in the corpus.
+
+    Returns:
+        list: A list of the most common topics, each represented by the longest form of the keyword found.
+
+    Raises:
+        KeyError: If an algorithm in keyword_dicts is not found in the weights dictionary.
+    """
     term_count = defaultdict(float)
     longest_terms = {}
     text_length = len(text)
@@ -398,6 +422,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
 
     # Create a list of the most common terms, using the longest form of the term
+    # TODO: Consider if it makes sense using the longest terms
     most_common_terms = []
     for term, keyword_score in sorted_terms:
         if term in longest_terms:
@@ -414,7 +439,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             if not is_subset:
                 most_common_terms.append(longest_terms[term])
 
-    return most_common_terms
+    return most_common_terms[:10] # TODO: consider adding a parameter for the number of common topics
 
 
 def remove_stopwords(text, nlp_spacy):

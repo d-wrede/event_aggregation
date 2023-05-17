@@ -4,14 +4,10 @@
 
 import cma
 import os
-
+import shutil
 # from cma import transformations
 import numpy as np
 import pandas as pd
-import spacy
-
-# from ruamel.yaml import YAML
-import yaml
 import json
 from main import process_messages
 import time
@@ -26,25 +22,21 @@ from matplotlib import pyplot as plt
 import pprint
 
 
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
+# Set the number of cores to use for multiprocessing
+n_cores = 15
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
+config_path = "config/params_tuned_230515.csv"
+
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
 # use the most recent best parameters as starting point
 best_switch = False
 
-# run file as: python3 optimize_parameters.py -Xfrozen_modules=off
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
-# Set the number of cores to use for multiprocessing
-n_cores = 15
-
-config_path = "config/params_tuned_230515.csv"
-# with open(config_path, "r") as file:
-#     parameters = yaml.load(file, Loader=yaml.FullLoader)
-# print(parameters)
 
 def load_word_freq_dict():
     """Load the word frequency dictionary"""
@@ -114,7 +106,7 @@ def read_parameter_file(file_path):
     }
     const_params = {
         "param_keys": [],
-        "initial_values": [],
+        "param_values": [],
         "data_types": [],
     }
 
@@ -134,17 +126,17 @@ def read_parameter_file(file_path):
             data_type = row[6]
             opt_switch = row[7]
 
-            if opt_switch == "opt":
+            if opt_switch == "const":
+                const_params["param_keys"].append(param_key)
+                const_params["param_values"].append(initial_value)
+                const_params["data_types"].append(data_type)
+
+            elif opt_switch == "opt":
                 opt_vars["param_keys"].append(param_key)
                 opt_vars["initial_values"].append(initial_value)
                 opt_vars["lower_bounds"].append(float(row[4]))
                 opt_vars["upper_bounds"].append(float(row[5]))
                 opt_vars["data_types"].append(data_type)
-            elif opt_switch == "const":
-                const_params["param_keys"].append(param_key)
-                const_params["initial_values"].append(initial_value)
-                const_params["data_types"].append(data_type)
-        
     return opt_vars, const_params
 
 
@@ -180,50 +172,36 @@ def get_best_opt_pars(file_path, initial_values):
         return initial_values
 
 
-def scale_variables(
-    initial_values, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
-):
+def scale_variables(opt_vars, cma_bounds):
     """Scale the initial values to the range [cma_lower_bound, cma_upper_bound]"""
-    scaled_lower_bounds = [cma_lower_bound] * len(lower_bounds)
-    scaled_upper_bounds = [cma_upper_bound] * len(upper_bounds)
 
     scaled_initial_values = [
         ((value - lb) / (ub - lb)) * (sub - slb) + slb
         for value, lb, ub, slb, sub in zip(
-            initial_values,
-            lower_bounds,
-            upper_bounds,
-            scaled_lower_bounds,
-            scaled_upper_bounds,
+            opt_vars["initial_values"],
+            opt_vars["lower_bounds"],
+            opt_vars["upper_bounds"],
+            [cma_bounds[0]] * len(opt_vars["lower_bounds"]),
+            [cma_bounds[1]] * len(opt_vars["upper_bounds"]),
         )
     ]
 
     return scaled_initial_values
 
 
-def unscale_variables(
-    scaled_variables, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
-):
+def unscale_variables(scaled_variables, opt_vars, cma_bounds):
     """Unscale the variables from the range [cma_lower_bound, cma_upper_bound] to the range [lower_bound, upper_bound]"""
     unscaled_variables = [
         lb
-        + (scaled_value - cma_lower_bound)
+        + (scaled_value - cma_bounds[0])
         * (ub - lb)
-        / (cma_upper_bound - cma_lower_bound)
-        for scaled_value, lb, ub in zip(scaled_variables, lower_bounds, upper_bounds)
+        / (cma_bounds[1] - cma_bounds[0])
+        for scaled_value, lb, ub in zip(scaled_variables, opt_vars["lower_bounds"], opt_vars["upper_bounds"])
     ]
     return unscaled_variables
 
 
-def optimize_parameters(
-    es,
-    param_keys,
-    data_types,
-    lower_bounds,
-    upper_bounds,
-    cma_lower_bound,
-    cma_upper_bound,
-):
+def optimize_parameters(es, opt_vars, const_params, cma_bounds):
     """Optimize the parameters using the CMA-ES algorithm"""
 
     # Request new list of candidate solutions
@@ -231,23 +209,25 @@ def optimize_parameters(
 
     # Apply the scale_coordinates transformation to the objective function
     unscaled_candidates = [
-        unscale_variables(
-            candidate, lower_bounds, upper_bounds, cma_lower_bound, cma_upper_bound
-        )
+        unscale_variables(candidate, opt_vars, cma_bounds)
         for candidate in X
     ]
 
-    # Turn list into parameter dictionaries
-    param_dicts = lists_to_dicts(unscaled_candidates, param_keys, data_types)
+    # Turn optimization variable lists into parameter dictionaries lists
+    opt_var_dicts = lists_to_dicts(unscaled_candidates, opt_vars["param_keys"], opt_vars["data_types"])
+    # Turn constant parameter lists into parameter dictionaries lists
+    const_par_dict = lists_to_dicts([const_params["param_values"]], const_params["param_keys"], const_params["data_types"])
+    # Combine the constant and optimization variable dictionaries
+    par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
 
     # evaluate function in parallel
-    results = pool.map_async(objective_function, param_dicts).get()
+    results = pool.map_async(objective_function, par_dicts).get()
 
     # Extract the performance and runtime values from the results
     performance, f_values, runtimes = zip(*results)
     # Update the CMA-ES with the new objective function returns
     es.tell(X, f_values)
-    return performance, runtimes, param_dicts
+    return performance, runtimes, par_dicts
 
 
 def run_cProfile(param_dict, top_n=20):
@@ -284,36 +264,37 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
+def backup_results():
+    # save the outcmaes files to the results folder
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    folder_name = "outcmaes_" + timestamp
+    destination_folder = os.path.join("results", folder_name)
+    os.makedirs(destination_folder, exist_ok=True)
+    for file in os.listdir("outcmaes"):
+        shutil.copy(os.path.join("outcmaes", file), destination_folder)
+    print("backed up outcmaes files to:", destination_folder)
+
 
 # Read the parameter file
-(
-    opt_vars,
-    const_params
-) = read_parameter_file(config_path)
-
-# use switch to load the best parameters from the previous run
-if best_switch:
-    # TODO: Remove or update to handle const_params split
-    initial_opt_values = get_best_opt_pars(xrecentbest_path, initial_opt_values)
+opt_vars, const_params = read_parameter_file(config_path)
 
 # choose the standard bounds for the CMA-ES optimization
-cma_lower_bound = 0
-cma_upper_bound = 10
+cma_bounds = (0, 10)
 
 # Set the initial standard deviation for the optimization
 # The optimum should lie within the scaled bounds, approximately within x0 ± 3*sigma0.
-sigma0 = 0.4 * (cma_upper_bound - cma_lower_bound)
+sigma0 = 0.4 * (cma_bounds[1] - cma_bounds[0])
 
 options = {
     "bounds": [
-        [cma_lower_bound] * len(opt_vars['initial_opt_values']),
-        [cma_upper_bound] * len(opt_vars['initial_opt_values']),
+        [cma_bounds[0]] * len(opt_vars["initial_values"]),
+        [cma_bounds[1]] * len(opt_vars["initial_values"]),
     ],
     "popsize": 15,
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 1e-4,
-    "maxiter": 1000,
+    "maxiter": 100,
     #'CMA_diagonal': True,
 }
 
@@ -331,7 +312,7 @@ if __name__ == "__main__":
     freeze_support()
 
     # create scale coordinates
-    scaled_init_opt_values = scale_variables(opt_vars)
+    scaled_init_opt_values = scale_variables(opt_vars, cma_bounds)
 
     # Instantiate the CMAEvolutionStrategy with the scaled initial values
     es = cma.CMAEvolutionStrategy(scaled_init_opt_values, sigma0, options)
@@ -347,16 +328,10 @@ if __name__ == "__main__":
             if counter == 2:
                 main_start_time = time.time()
 
-            performance, runtimes, param_dicts = optimize_parameters(
-                es,
-                param_keys,
-                data_types,
-                lower_bounds,
-                upper_bounds,
-                cma_lower_bound,
-                cma_upper_bound,
-                const_params
+            performance, runtimes, par_dicts = optimize_parameters(
+                es, opt_vars, const_params, cma_bounds
             )
+            print("runtimes:", runtimes)
 
             # Print the best performance and longest runtime every iteration
             if counter >= 2:
@@ -364,8 +339,9 @@ if __name__ == "__main__":
 
             if counter % 20 == 0:
                 max_idx = np.argmax(runtimes)
-                param_dict_max_runtimes = param_dicts[max_idx]
+                param_dict_max_runtimes = par_dicts[max_idx]
                 run_cProfile(param_dict_max_runtimes, 20)
+                backup_results()
 
             es.logger.add()
             es.logger.disp()
@@ -374,6 +350,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Optimization interrupted by user.")
     finally:
+        # backup outcmaes files
+        backup_results()
+        
         es.result_pretty()
         print("Optimization time: ", time.time() - main_start_time, "seconds")
 
