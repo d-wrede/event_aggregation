@@ -8,9 +8,11 @@ def unscale_row(row):
     candidate = row[column_names[5:]]
 
     # Unscaled the variables
-    unscaled_candidates = unscale_variables(
-        candidate, l_bound, u_bound, cma_lower_bounds, cma_upper_bounds
-    )
+    cma_bounds = (cma_lower_bounds, cma_upper_bounds)
+    unscaled_candidates = unscale_variables(candidate, opt_vars, cma_bounds)
+    #     candidate, opt_vars["l_bound"], opt_vars["u_bound"], cma_lower_bounds, cma_upper_bounds
+    # )
+    # unscale_variables(candidate, opt_vars, cma_bounds)
 
     # Replace the scaled variables with the unscaled variables
     row[column_names[5:]] = unscaled_candidates
@@ -294,13 +296,18 @@ df_scaled = pd.read_csv(
 )
 
 # Exclude the initial iterations (e.g., rows with 'evals' less than 5000)
-df_scaled = df_scaled[df_scaled["evals"] >= 10000]
+# df_scaled = df_scaled[df_scaled["evals"] >= 10000]
+threshold = df_scaled["evals"].quantile(0.5)
+df_scaled = df_scaled[df_scaled["evals"] >= threshold]
+
 
 # Read the parameter file
-config_path = "config/params_indexed.csv"
-param_keys, initial_values, l_bound, u_bound, data_types = read_parameter_file(
+config_path = "config/params_tuned_230515.csv"
+opt_vars, const_params = read_parameter_file(
     config_path
 )
+
+# param_keys, initial_values, l_bound, u_bound, data_types
 
 cma_lower_bounds = 0
 cma_upper_bounds = 10
@@ -308,6 +315,7 @@ cma_upper_bounds = 10
 # unscaled_candidates = unscale_variables(candidate, l_bound, u_bound, cma_lower_bounds, cma_upper_bounds)
 
 # Apply the unscale function to each row of the data DataFrame
+print("df_scaled head:\n", df_scaled.head())
 df_unscaled = df_scaled.apply(unscale_row, axis=1)
 print("unscaled_data head:\n", df_unscaled.head())
 
@@ -319,8 +327,8 @@ df_analysed = df_analysed.drop(["count", "std", "25%", "50%", "75%"], axis=1)
 # add row with min fitness value to describe_unscaled_data
 min_fitness_row = df_unscaled.loc[df_unscaled["fitness"].idxmin()]
 df_analysed["opt_val"] = min_fitness_row.T.round(2)
-df_analysed["u_bound"] = u_bound
-df_analysed["l_bound"] = l_bound
+df_analysed["u_bound"] = opt_vars["u_bound"]
+df_analysed["l_bound"] = opt_vars["l_bound"]
 
 
 # read stddev from file

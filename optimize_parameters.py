@@ -341,7 +341,6 @@ if __name__ == "__main__":
                 max_idx = np.argmax(runtimes)
                 param_dict_max_runtimes = par_dicts[max_idx]
                 run_cProfile(param_dict_max_runtimes, 20)
-                backup_results()
 
             es.logger.add()
             es.logger.disp()
@@ -364,7 +363,7 @@ if __name__ == "__main__":
                     "x_best": es.result[0].tolist(),
                     "f_best": es.result[1],
                     "evaluations": es.result[3],
-                    "stop": es.result[6],
+                    "stop": es.result[6].tolist(),
                 },
             }
             json.dump(summary_data, f, indent=4)
