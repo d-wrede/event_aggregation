@@ -24,11 +24,15 @@ import pprint
 
 # Set the number of cores to use for multiprocessing
 n_cores = 15
+# cmaes population size, typically n_cores * integer
+popsize = 15
+# Set the time penalty factor for the objective function
+time_penalty_factor = 1
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
-config_path = "config/params_tuned_230515.csv"
+config_path = "config/params_tuned_20230518_0.csv"
 
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
@@ -60,7 +64,7 @@ def objective_function(parameters):
     # Call the process_messages function
     performance = process_messages(word_freq_dict, parameters, messages)
     end_time = time.time()
-    perf_score = performance["common_topics"] - (end_time - start_time) * 0.25
+    perf_score = performance["common_topics"] - (end_time - start_time) * time_penalty_factor
 
     return performance["common_topics"], -perf_score, end_time - start_time
 
@@ -290,20 +294,20 @@ options = {
         [cma_bounds[0]] * len(opt_vars["initial_values"]),
         [cma_bounds[1]] * len(opt_vars["initial_values"]),
     ],
-    "popsize": 15,
+    "popsize": popsize,
     "verb_disp": 1,
     "tolx": 1e-6,
-    "tolfun": 1e-4,
-    "maxiter": 100,
+    "tolfun": 30,
+    "maxiter": 200,
     #'CMA_diagonal': True,
 }
 
-if cProfile_switch:
-    # TODO: Remove or update to handle const_params split
-    # Convert the LIST (only one here) of parameter values to a dictionary
-    param_dict = lists_to_dicts(initial_opt_values, param_keys, data_types)[0]
-    run_cProfile(param_dict, 20)
-    exit()
+# if cProfile_switch:
+#     # TODO: Remove or update to handle const_params split
+#     # Convert the LIST (only one here) of parameter values to a dictionary
+#     param_dict = lists_to_dicts(initial_opt_values, param_keys, data_types)[0]
+#     run_cProfile(param_dict, 20)
+#     exit()
 
 if __name__ == "__main__":
     # disable file validation to suppress warning messages
@@ -351,9 +355,14 @@ if __name__ == "__main__":
     finally:
         # backup outcmaes files
         backup_results()
-        
+
         es.result_pretty()
         print("Optimization time: ", time.time() - main_start_time, "seconds")
+
+        # Generate plots from the logged data
+        cma.plot()
+        plt.show()
+        input("Look at the plots and press enter to continue.")
 
         # save optimization results to file
         with open("outcmaes/optimization_summary.json", "w") as f:
@@ -372,14 +381,8 @@ if __name__ == "__main__":
         pool.terminate()  # pool.close()
         pool.join()
 
-        # Generate plots from the logged data
-        cma.plot()
-        plt.show()
-        input("Look at the plots and press enter to continue.")
-
-        # Try pretty print
         # Obtain the result dictionary
-        result_dict = es.result()
+        # result_dict = es.result()
 
         # Pretty print the result dictionary
-        pprint.pprint(result_dict)
+        # pprint.pprint(result_dict)

@@ -1,20 +1,39 @@
 import time
 import pandas as pd
 import re
+import os
 from optimize_parameters import read_parameter_file, unscale_variables
 
-fn_readparams = "config/params_tuned_230515.csv"
-fn_params_tuned = "config/params_tuned" + time.strftime("%Y%m%d") + ".csv"
+fn_readparams = "config/params_tuned_20230518.csv"
 
-
+# generate new filename for the tuned parameters
+n = 0
+while True:
+    fn_params_tuned = f"config/params_tuned_{time.strftime('%Y%m%d')}_{n}.csv"
+    if not os.path.isfile(fn_params_tuned):
+        break
+    n += 1
 
 def unscale_row(row):
+    """
+    Unscales a row of data.
+
+    This function takes a row of data, extracts the variables to be unscaled, unscales the variables, 
+    and replaces the original scaled variables with the unscaled variables.
+
+    Args:
+        row (pd.Series or similar): A row of data containing variables to be unscaled.
+
+    Returns:
+        row: The row of data with unscaled variables.
+    """
     # Extract the variables to be unscaled
-    candidate = row[column_names[5:]]
+    scaled_values = row[column_names[5:]]
+    # print("scaled_values:", scaled_values)
 
     # Unscaled the variables
     cma_bounds = (cma_lower_bounds, cma_upper_bounds)
-    unscaled_candidates = unscale_variables(candidate, opt_vars, cma_bounds)
+    unscaled_candidates = unscale_variables(scaled_values, opt_vars, cma_bounds)
     #     candidate, opt_vars["lower_bounds"], opt_vars["upper_bounds"], cma_lower_bounds, cma_upper_bounds
     # )
     # unscale_variables(candidate, opt_vars, cma_bounds)
@@ -28,7 +47,22 @@ def unscale_row(row):
 
 
 def calculate_proposed_bounds(df_in, stddevs):
-    """Calculate the proposed bounds for each variable."""
+    """
+    Calculates the proposed bounds for the optimization parameters based on statistical analysis.
+
+    The function analyzes the input DataFrame and standard deviations of the parameters. It calculates proposed bounds 
+    for each parameter by adjusting its range based on its standard deviation ratio. It then corrects these proposed bounds 
+    to ensure they aren't too close to values from the previous optimization run. If the original bound was zero, it will 
+    be adjusted accordingly. Remarks are generated when bounds are adjusted.
+
+    Args:
+        df_in (pd.DataFrame): Input DataFrame with data of the parameters.
+        stddevs (list): List of standard deviations of the parameters.
+
+    Returns:
+        pd.DataFrame: A DataFrame with the ratio of standard deviations and the proposed lower and upper bounds for 
+        each parameter, along with remarks for any adjustments made.
+    """
 
     def scale_factors(P1, P2):
         """Calculate the scale factor between two points."""
@@ -183,15 +217,38 @@ def calculate_proposed_bounds(df_in, stddevs):
     return df[["ratio_stddev", "p_l_bound", "p_u_bound", "remark_l", "remark_u"]].round(2)
 
 
-def update_params_indexed(df_analysed, params_indexed_file):
-    # Read the 'params_indexed.csv' file into a DataFrame
-    params_indexed_df = pd.read_csv(params_indexed_file)
-    print("params_indexed_df:\n", params_indexed_df.head())
-    params_indexed_df = params_indexed_df.drop(params_indexed_df.columns[0], axis=1)
-    print("params_indexed_df:\n", params_indexed_df.head())
+def update_params_file(df_analysed, fn_read, fn_write):
+    """
+    Update parameters from an analysis DataFrame based on a parameters file.
 
+    This function reads the parameters file into a DataFrame, matches rows in the analysed DataFrame based on 
+    the parameter name, and updates the 'initial_value', 'lower_bound', and 'upper_bound' columns. 
+    The updated DataFrame is then saved back to the parameters file.
+
+    Args:
+        df_analysed (pd.DataFrame): A DataFrame containing analysed data.
+        fn_read (str): The filepath of the parameters file to be read.
+        fn_write (str): The filepath of the parameters file to be updated.
+
+    Returns:
+        None
+    """
+    # Read the parameter file into a DataFrame
+    params_indexed_df = pd.read_csv(fn_read)
     # print("params_indexed_df:\n", params_indexed_df.head())
+    # drop old index column
+    params_indexed_df = params_indexed_df.drop(params_indexed_df.columns[0], axis=1)
+    # print("params_indexed_df:\n", params_indexed_df.head())
+
+    # remove whitespace from column names
+    params_indexed_df.columns = params_indexed_df.columns.str.strip()
     params_indexed_df["parameter2"] = params_indexed_df.iloc[:, 1].str.strip()
+    # to do it for all columns, consider
+    # for col in params_indexed_df.columns:
+    #     params_indexed_df[col] = params_indexed_df[col].str.strip()
+
+    
+    # print("params_indexed_df:\n", params_indexed_df.head())
 
     # Loop through the rows of the 'df_analysed' DataFrame
     for index, row in df_analysed.iterrows():
@@ -207,7 +264,7 @@ def update_params_indexed(df_analysed, params_indexed_file):
         params_indexed_df.loc[match, "lower_bound"] = round(row["p_l_bound"], 2)
         params_indexed_df.loc[match, "upper_bound"] = round(row["p_u_bound"], 2)
 
-    print("params_indexed_df:\n", params_indexed_df.head())
+    # print("params_indexed_df:\n", params_indexed_df.head())
 
     # updated_params_df = params_indexed_df[['index', 'parameter1', 'parameter2', 'initial_value', 'lower_bound', 'upper_bound', 'data_type', 'description']]
     # column_order = ['index', 'parameter1', 'parameter2', 'initial_value', 'lower_bound', 'upper_bound', 'data_type', 'description']
@@ -215,31 +272,53 @@ def update_params_indexed(df_analysed, params_indexed_file):
 
     # updated_params_df = params_indexed_df.iloc[:, [0, 1, 8, 9, 10, 11, 6, 7]]
 
-    print("updated_params_df:\n", params_indexed_df.head())
+    # print("updated_params_df:\n", params_indexed_df.head())
     # Save the updated 'params_indexed_df' back to the 'params_indexed.csv' file
-    params_indexed_df.to_csv(fn_params_tuned, index=False)
+    params_indexed_df.to_csv(fn_write, index=True)
 
 
+###                                       ###
+#   Read parameter names from config file   #
+###                                       ###
 
 # Read the parameter names from the 'params_indexed.csv' file
 params = pd.read_csv(fn_readparams, index_col=None, skipinitialspace=True)
 # Take all rows, and all columns starting from the second column)
 params = params.iloc[:, 1:]
-params = params[params['opt_or_not'] == 'opt']
-params.columns = params.columns.str.strip()
+# optimized value parameters
+params_opt = params[params['opt_or_not'] == 'opt']
+# constant value parameters
+params_const = params[params['opt_or_not'] == 'const']
+
+params_opt.columns = params_opt.columns.str.strip()
+# parameter names of the optimized parameters
 param_names = (
-    params["parameter1"].str.strip() + ":" + params["parameter2"].str.strip()
+    params_opt["parameter1"].str.strip() + ":" + params_opt["parameter2"].str.strip()
 ).tolist()
-print("len(params): ", len(params))
+print("param names:\n", param_names)
+print("len(params_opt): ", len(params_opt))
 # print("Parameter names:", param_names)
-# param_names = (params["parameter1"].strip() + "_" + params["parameter2"].strip()).tolist()
+# param_names = (params_opt["parameter1"].strip() + "_" + params_opt["parameter2"].strip()).tolist()
+
+# Read the parameter file
+opt_vars, const_params = read_parameter_file(
+    fn_readparams
+)
+
+
+###                                      ###
+#   Read optimization results recentbest   #
+###                                      ###
 
 # Read the first line of the file to extract column names
 with open("outcmaes/xrecentbest.dat") as f:
+    # gets "% # columns="iter, evals, sigma, 0, fitness, xbest" seed=540356, Thu May 18 15:02:09 2023, <python>{}</python>"
     first_line = f.readline()
 
 # Extract column names from the first line
+# gets "iter, evals, sigma, 0, fitness, xbest"
 column_names_str = first_line.split('"')[1]
+# since xbest comprises the parameter values, the column names are the parameter names
 column_names = column_names_str.split(", ")[:5] + param_names
 
 # Read the data from the file, skipping the first row (header)
@@ -252,41 +331,46 @@ df_scaled = pd.read_csv(
     names=column_names,
 )
 
-# Exclude the initial iterations (e.g., rows with 'evals' less than 5000)
-# df_scaled = df_scaled[df_scaled["evals"] >= 10000]
+# evaluate the last 50% of the optimization data
 threshold = df_scaled["evals"].quantile(0.5)
 df_scaled = df_scaled[df_scaled["evals"] >= threshold]
 
+###                                    ###
+#   Analyse optimization results         #
+###                                    ###
+#   Goal: mean, min, max, stddev, fitness,
+#         opt_val, lower_bounds, upper_bounds,
 
-# Read the parameter file
-config_path = "config/params_tuned_230515.csv"
-opt_vars, const_params = read_parameter_file(
-    config_path
-)
-
-# param_keys, initial_values, l_bound, u_bound, data_types
-
+# cma scaling bounds
 cma_lower_bounds = 0
 cma_upper_bounds = 10
-# for each row in data, unscale the variables (columns 5 to end)
-# unscaled_candidates = unscale_variables(candidate, l_bound, u_bound, cma_lower_bounds, cma_upper_bounds)
 
+# for each row in the data, unscale the variables (columns 5 to end)
 # Apply the unscale function to each row of the data DataFrame
 print("df_scaled head:\n", df_scaled.head())
 df_unscaled = df_scaled.apply(unscale_row, axis=1)
 print("unscaled_data head:\n", df_unscaled.head())
 
-
-df_analysed = df_unscaled[column_names[5:]].describe().T.round(2)
+# get mean, min, max values for each variable
+df_analysed = df_unscaled[column_names[5:]].describe().T.round(3)
 df_analysed.index.name = "parameter_name"
 df_analysed = df_analysed.drop(["count", "std", "25%", "50%", "75%"], axis=1)
+print("df_analysed head:\n", df_analysed.head())
 
-# add row with min fitness value to describe_unscaled_data
+# add column with optimized values, taken from the best result (min fitness)
 min_fitness_row = df_unscaled.loc[df_unscaled["fitness"].idxmin()]
-df_analysed["opt_val"] = min_fitness_row.T.round(2)
-df_analysed["upper_bounds"] = opt_vars["upper_bounds"]
-df_analysed["lower_bounds"] = opt_vars["lower_bounds"]
+df_analysed["opt_val"] = min_fitness_row.T.round(3)
+print("df_analysed:\n", df_analysed)
 
+# add columns with applied lower and upper bounds
+df_analysed["lower_bounds"] = opt_vars["lower_bounds"]
+df_analysed["upper_bounds"] = opt_vars["upper_bounds"]
+
+
+###                                   ###
+#   Calculate proposed bounds           #
+#   based on the stddev of the results  #
+###                                   ###
 
 # read stddev from file
 with open("outcmaes/stddev.dat") as f:
@@ -299,6 +383,7 @@ df_analysed[
     ["ratio_stddev", "p_l_bound", "p_u_bound", "remark_l", "remark_u"]
 ] = calculate_proposed_bounds(df_analysed, stddevs)
 
+# reorder columns
 df_analysed = df_analysed[
     [
         "mean",
@@ -318,52 +403,16 @@ print("variable analysis:\n", df_analysed.sort_values(by=['ratio_stddev'], ascen
 
 df_analysed.to_csv("analyze_data/variable_analysis.csv", index=True)
 
-# Usage example:
-update = input("Do you want to update the parameter file? (y/n): ")
+# update the parameter file
+print("Do you want to update the parameter file with the proposed bounds and opt values as initial values?")
+update = input(f"They will be written to {fn_params_tuned} (y/n): ")
 if update == "y":
-    update_params_indexed(df_analysed, "config/params_tuned_230515.csv")
-    print("Parameter file updated.")
+    update_params_file(df_analysed, fn_readparams, fn_params_tuned)
+    print("\nParameter file updated. Please check the updated parameter file,\n\
+update read param_filename and run the optimization again.")
 else:
     print("Parameter file not updated.")
 
 
 
 exit()
-# Calculate min, max, and average values for each variable
-# min_values = data[column_names[5:]].min()
-# max_values = data[column_names[5:]].max()
-# average_values = data[column_names[5:]].mean()
-
-# # Create a DataFrame to store the calculated values
-# summary = pd.DataFrame(
-#     {"Min": min_values, "Max": max_values, "Average": average_values}
-# )
-
-# print("data head3:\n", data[column_names[5:]].head())
-# # Calculate the tendency using a histogram
-# tendency = (
-#     data[column_names[5:]].apply(pd.Series.value_counts, bins=10, normalize=True).T
-# )
-# print("tendency head:\n", tendency.head())
-print("describe data:", df_scaled.describe())
-# Add the tendency information to the summary DataFrame
-for idx, col_name in enumerate(tendency.columns):
-    summary[f"Tendency_{(idx+1)*10}%"] = tendency[col_name].values
-
-# Display the results
-print("summary head1:\n", summary.head())
-
-# Calculate additional statistics
-additional_stats = (
-    df_scaled[column_names[5:]].describe().loc[["25%", "50%", "75%", "std"]]
-)
-summary = summary.join(additional_stats.T)
-print("summary head2:\n", summary.head())
-summary.to_csv("analyze_data/summary.csv", index=True)
-
-# Convert the summary DataFrame to a readable string
-summary_str = summary.to_string()
-
-# Print the summary DataFrame
-print("Summary:")
-print(summary_str)

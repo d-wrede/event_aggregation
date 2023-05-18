@@ -37,6 +37,9 @@ import pandas as pd
 import nltk
 from src.extract_timestamp import filter_string
 
+# printswitch for debugging, due to multiprocessing
+prints = False
+
 
 def spacy_ner(messages, parameters, spacy_docs):
     """Extracts named entities from the messages using spaCy's NER model.
@@ -235,11 +238,11 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     nmf = NMF(
         # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
-        max_iter=150, #parameters["max_iter"],
-        # tol=parameters["tol"] / 10000,
-        # alpha_W=parameters["alpha_W"],
-        # alpha_H=parameters["alpha_H"],
-        # l1_ratio=parameters["l1_ratio"],
+        max_iter=parameters["max_iter"],
+        tol=parameters["tol"] / 10000,
+        alpha_W=parameters["alpha_W"],
+        alpha_H=parameters["alpha_H"],
+        l1_ratio=parameters["l1_ratio"],
         random_state=42,
     )
 
@@ -493,7 +496,7 @@ def check_if_topic(filtered_messages):
             message["topic_suggestions"]["common_topics"] = topic
 
 
-def filter_keywords(keywords, nlp_spacy):
+def filter_keywords(keywords, nlp_spacy, parameters):
     """
     Filters the given list of keywords based on specified conditions.
 
@@ -511,7 +514,8 @@ def filter_keywords(keywords, nlp_spacy):
     # only keywords with min length of 3
     keywords = [keyword for keyword in keywords if len(keyword) > 2]
     # Create spaCy tokens from the keywords
-    keywords_and_tokens = [(doc[0], keyword) for keyword, doc in zip(keywords, nlp_spacy.pipe(keywords))]
+    batch_size = parameters["batch_size"]
+    keywords_and_tokens = [(doc[0], keyword) for keyword, doc in zip(keywords, nlp_spacy.pipe(keywords, batch_size=batch_size))]
 
     filtered_keywords = [
         keyword
@@ -641,29 +645,31 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
             - NMF_keywords (list): Keywords extracted using NMF and sorted by input order.
 
     """
-    # print("rake")
+
+    if prints: print("rake")
     rake_keywords = rake(cleaned_texts, parameters, rake_object) #["rake"]
-    spacy_docs = nlp_spacy.pipe(cleaned_texts)  # , batch_size=batch_size)
-    # print("spacy")
+    batch_size = parameters["spacy"]["batch_size"]
+    spacy_docs = nlp_spacy.pipe(cleaned_texts, batch_size=batch_size)
+    if prints: print("spacy")
     spacy_docs = list(nlp_spacy.pipe(cleaned_texts))
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs) #
 
     # remove stopwords and perform lemmatization
     # spacy_docs = nlp_spacy.pipe(cleaned_texts)
     cleaned_texts = preprocess_text(cleaned_texts, spacy_docs)
-    # print("tfidf")
+    if prints: print("tfidf")
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters) #["tf_IDF"]
-    # print("NMF")
-    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters) #["NMF"]
+    if prints: print("NMF")
+    NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
     NMF_keywords = sort_keywords_by_input_order(
         NMF_keywords, cleaned_texts
     )  # move into function
-    # print("LDA")
+    if prints: print("LDA")
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters) #["LDA"]
     LDA_keywords = sort_keywords_by_input_order(
         LDA_keywords, cleaned_texts
     )  # move into function
-    # print("done")
+    if prints: print("done")
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
 
 
@@ -703,31 +709,8 @@ def extract_common_topics(filtered_messages, parameters, word_freq_dict, nlp_spa
             parameters["keyword_selection_parameters"],
             word_freq_dict,
         )
-        common_topics = filter_keywords(common_topics, nlp_spacy)
+        common_topics = filter_keywords(common_topics, nlp_spacy, parameters["spacy_keywords"])
         message["topic_suggestions"]["common_topics"] = common_topics
-
-        # print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
-        # print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"])
-        # print("## later added ##")
-        # print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
-        # print("LDA: ", message["topic_suggestions"]["LDA"])
-        # print("NMF: ", message["topic_suggestions"]["NMF"])
-
-        # print timestamps
-        # timestamps = message["timestamps"]
-        # for stamp in timestamps:
-        #     if stamp["date1"]:
-        #         print("date1: ", stamp["date1"])
-        #     if stamp["clock1"]:
-        #         print("clock1: ", stamp["clock1"])
-        #     if stamp["date2"]:
-        #         print("date2: ", stamp["date2"])
-        #     if stamp["clock2"]:
-        #         print("clock2: ", stamp["clock2"])
-        #     print("---")
-
-        # print("common topics: ", common_topics)
-        # print("")
 
 
 def extract_topic(filtered_messages, parameters, word_freq_dict):
