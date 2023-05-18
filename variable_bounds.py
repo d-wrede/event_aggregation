@@ -1,6 +1,11 @@
+import time
 import pandas as pd
 import re
 from optimize_parameters import read_parameter_file, unscale_variables
+
+fn_readparams = "config/params_tuned_230515.csv"
+fn_params_tuned = "config/params_tuned" + time.strftime("%Y%m%d") + ".csv"
+
 
 
 def unscale_row(row):
@@ -10,11 +15,13 @@ def unscale_row(row):
     # Unscaled the variables
     cma_bounds = (cma_lower_bounds, cma_upper_bounds)
     unscaled_candidates = unscale_variables(candidate, opt_vars, cma_bounds)
-    #     candidate, opt_vars["l_bound"], opt_vars["u_bound"], cma_lower_bounds, cma_upper_bounds
+    #     candidate, opt_vars["lower_bounds"], opt_vars["upper_bounds"], cma_lower_bounds, cma_upper_bounds
     # )
     # unscale_variables(candidate, opt_vars, cma_bounds)
 
     # Replace the scaled variables with the unscaled variables
+    print("unscaled_candidates:", unscaled_candidates)
+    print("row[column_names[5:]]:", row[column_names[5:]])
     row[column_names[5:]] = unscaled_candidates
 
     return row
@@ -56,7 +63,7 @@ def calculate_proposed_bounds(df_in, stddevs):
         ratio_stddevs[i] = float(stddevs[i].replace("\n", "")) / max_dev
     df["ratio_stddev"] = ratio_stddevs
 
-    df["range"] = df["u_bound"] - df["l_bound"]
+    df["range"] = df["upper_bounds"] - df["lower_bounds"]
 
     # Calculate the scale factors for the adjusted range
     major_scale = 1
@@ -146,7 +153,7 @@ def calculate_proposed_bounds(df_in, stddevs):
 
     accepted_condition3 = df["opt_dist"] > df["accepted_distance"]
 
-    df.loc[~accepted_condition3, "p_u_bound_opt"] = df["u_bound"] + df["opt_dist"] * (
+    df.loc[~accepted_condition3, "p_u_bound_opt"] = df["upper_bounds"] + df["opt_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
 
@@ -155,7 +162,7 @@ def calculate_proposed_bounds(df_in, stddevs):
     df["accepted_distance"] = minmaxscale * df["adjusted_range"]
 
     accepted_condition4 = df["max_dist"] > df["accepted_distance"]
-    df.loc[~accepted_condition4, "p_u_bound_max"] = df["u_bound"] + df["max_dist"] * (
+    df.loc[~accepted_condition4, "p_u_bound_max"] = df["upper_bounds"] + df["max_dist"] * (
         a_bound * df["ratio_stddev"] + b_bound
     )
 
@@ -170,8 +177,8 @@ def calculate_proposed_bounds(df_in, stddevs):
     )
 
     # correct the bounds, if original bound was zero
-    df["p_l_bound"] = df[["p_l_bound", "l_bound"]].max(axis=1)
-    df["p_u_bound"] = df[["p_u_bound", "u_bound"]].min(axis=1)
+    df["p_l_bound"] = df[["p_l_bound", "lower_bounds"]].max(axis=1)
+    df["p_u_bound"] = df[["p_u_bound", "upper_bounds"]].min(axis=1)
 
     return df[["ratio_stddev", "p_l_bound", "p_u_bound", "remark_l", "remark_u"]].round(2)
 
@@ -179,18 +186,21 @@ def calculate_proposed_bounds(df_in, stddevs):
 def update_params_indexed(df_analysed, params_indexed_file):
     # Read the 'params_indexed.csv' file into a DataFrame
     params_indexed_df = pd.read_csv(params_indexed_file)
-
     print("params_indexed_df:\n", params_indexed_df.head())
-    params_indexed_df["parameter2"] = params_indexed_df.iloc[:, 2].str.strip()
+    params_indexed_df = params_indexed_df.drop(params_indexed_df.columns[0], axis=1)
+    print("params_indexed_df:\n", params_indexed_df.head())
+
+    # print("params_indexed_df:\n", params_indexed_df.head())
+    params_indexed_df["parameter2"] = params_indexed_df.iloc[:, 1].str.strip()
 
     # Loop through the rows of the 'df_analysed' DataFrame
     for index, row in df_analysed.iterrows():
-        print()
-        print(f"index: {index}, row:\n{row}")
-        print()
+        # print()
+        # print(f"index: {index}, row:\n{row}")
+        # print()
         # Find the corresponding row in 'params_indexed_df' based on the parameter name
         match = params_indexed_df["parameter2"] == index.split(":")[-1]
-        print("match:", match)
+        # print("match:", match)
 
         # Update the 'initial_value', 'lower_bound', and 'upper_bound' columns
         params_indexed_df.loc[match, "initial_value"] = round(row["opt_val"], 2)
@@ -199,81 +209,28 @@ def update_params_indexed(df_analysed, params_indexed_file):
 
     print("params_indexed_df:\n", params_indexed_df.head())
 
-    # updated_params_df = params_indexed_df.iloc[:, 1]
-    # updated_params_df = params_indexed_df[['parameter2', 'initial_value', 'lower_bound', 'upper_bound']]
-    # updated_params_df = params_indexed_df.iloc[:, 6]
-    # updated_params_df = params_indexed_df.iloc[:, 7]
-
     # updated_params_df = params_indexed_df[['index', 'parameter1', 'parameter2', 'initial_value', 'lower_bound', 'upper_bound', 'data_type', 'description']]
-    updated_params_df = params_indexed_df.iloc[:, [0, 1, 8, 9, 10, 11, 6, 7]]
+    # column_order = ['index', 'parameter1', 'parameter2', 'initial_value', 'lower_bound', 'upper_bound', 'data_type', 'description']
+    # updated_params_df = params_indexed_df[column_order]
 
-    print("updated_params_df:\n", updated_params_df.head())
+    # updated_params_df = params_indexed_df.iloc[:, [0, 1, 8, 9, 10, 11, 6, 7]]
+
+    print("updated_params_df:\n", params_indexed_df.head())
     # Save the updated 'params_indexed_df' back to the 'params_indexed.csv' file
-    updated_params_df.to_csv("config/params_tuned.csv", index=False)
+    params_indexed_df.to_csv(fn_params_tuned, index=False)
 
-
-# def update_params_indexed(df_analysed, params_indexed_file):
-#     # Read the 'params_indexed.csv' file into a DataFrame
-#     params_indexed_df = pd.read_csv(params_indexed_file)
-
-#     # Store the lengths of the entries in the 'parameter2' column
-#     entry_lengths = pd.DataFrame()
-#     entry_lengths['parameter2'] = params_indexed_df.iloc[:, 2].str.len()
-#     entry_lengths['initial_value'] = params_indexed_df.iloc[:, 3].len()
-#     entry_lengths['lower_bound'] = params_indexed_df.iloc[:, 4].len()
-#     entry_lengths['upper_bound'] = params_indexed_df.iloc[:, 5].len()
-
-#     # Strip whitespaces from the strings in the 'parameter2' column
-#     params_indexed_df['parameter2'] = params_indexed_df.iloc[:, 2].str.strip()
-#     params_indexed_df['initial_value'] = params_indexed_df.iloc[:, 3]
-#     params_indexed_df['lower_bound'] = params_indexed_df.iloc[:, 4]
-#     params_indexed_df['upper_bound'] = params_indexed_df.iloc[:, 5]
-
-#     print("params_indexed_df:\n", params_indexed_df.head())
-
-#     # Loop through the rows of the 'df_analysed' DataFrame
-#     for index, row in df_analysed.iterrows():
-#         print()
-#         print(f"index: {index}, row:\n{row}")
-#         print()
-#         # Find the corresponding row in 'params_indexed_df' based on the parameter name
-#         match = params_indexed_df['parameter2'] == index.split(":")[-1]
-#         print("match:", match)
-#         # Find the entry length for the current parameter
-#         entry_length = entry_lengths.loc[match, 'entry_length'].values[0]
-
-#         # Update the 'initial_value', 'lower_bound', and 'upper_bound' columns
-#         # Format the updated values with the proper length and whitespaces
-#         params_indexed_df.loc[match, 'initial_value'] = " {:.2f}".format(row['opt_val']).ljust(entry_length)
-#         params_indexed_df.loc[match, 'lower_bound'] = " {:.2f}".format(row['p_l_bound']).ljust(entry_length)
-#         params_indexed_df.loc[match, 'upper_bound'] = " {:.2f}".format(row['p_u_bound']).ljust(entry_length)
-
-#         # Update the 'initial_value', 'lower_bound', and 'upper_bound' columns with the needed number of spaces
-#         params_indexed_df.loc[match, 'initial_value'] = " {:.2f}".format(row['opt_val']).ljust(entry_length + 1)
-#         params_indexed_df.loc[match, 'lower_bound'] = " {:.2f}".format(row['p_l_bound']).ljust(entry_length + 1)
-#         params_indexed_df.loc[match, 'upper_bound'] = " {:.2f}".format(row['p_u_bound']).ljust(entry_length + 1)
-
-#     updated_params_df = params_indexed_df.iloc[:, 1]
-#     updated_params_df = params_indexed_df['parameter2']
-#     updated_params_df = params_indexed_df['initial_value']
-#     updated_params_df = params_indexed_df['lower_bound']
-#     updated_params_df = params_indexed_df['upper_bound']
-#     updated_params_df = params_indexed_df.iloc[:, 6]
-#     updated_params_df = params_indexed_df.iloc[:, 7]
-
-#     print("updated_params_df:\n", updated_params_df.head())
-
-
-#     # Save the updated 'params_indexed_df' back to the 'params_indexed.csv' file
-#     updated_params_df.to_csv("config/funny.csv", index=False)
 
 
 # Read the parameter names from the 'params_indexed.csv' file
-params = pd.read_csv("config/params_indexed.csv")
+params = pd.read_csv(fn_readparams, index_col=None, skipinitialspace=True)
+# Take all rows, and all columns starting from the second column)
+params = params.iloc[:, 1:]
+params = params[params['opt_or_not'] == 'opt']
 params.columns = params.columns.str.strip()
 param_names = (
     params["parameter1"].str.strip() + ":" + params["parameter2"].str.strip()
 ).tolist()
+print("len(params): ", len(params))
 # print("Parameter names:", param_names)
 # param_names = (params["parameter1"].strip() + "_" + params["parameter2"].strip()).tolist()
 
@@ -327,8 +284,8 @@ df_analysed = df_analysed.drop(["count", "std", "25%", "50%", "75%"], axis=1)
 # add row with min fitness value to describe_unscaled_data
 min_fitness_row = df_unscaled.loc[df_unscaled["fitness"].idxmin()]
 df_analysed["opt_val"] = min_fitness_row.T.round(2)
-df_analysed["u_bound"] = opt_vars["u_bound"]
-df_analysed["l_bound"] = opt_vars["l_bound"]
+df_analysed["upper_bounds"] = opt_vars["upper_bounds"]
+df_analysed["lower_bounds"] = opt_vars["lower_bounds"]
 
 
 # read stddev from file
@@ -348,8 +305,8 @@ df_analysed = df_analysed[
         "min",
         "max",
         "opt_val",
-        "l_bound",
-        "u_bound",
+        "lower_bounds",
+        "upper_bounds",
         "ratio_stddev",
         "p_l_bound",
         "p_u_bound",
@@ -364,7 +321,7 @@ df_analysed.to_csv("analyze_data/variable_analysis.csv", index=True)
 # Usage example:
 update = input("Do you want to update the parameter file? (y/n): ")
 if update == "y":
-    update_params_indexed(df_analysed, "config/params_indexed.csv")
+    update_params_indexed(df_analysed, "config/params_tuned_230515.csv")
     print("Parameter file updated.")
 else:
     print("Parameter file not updated.")
