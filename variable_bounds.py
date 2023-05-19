@@ -4,7 +4,7 @@ import re
 import os
 from optimize_parameters import read_parameter_file, unscale_variables
 
-fn_readparams = "config/params_tuned_20230519_4.csv"
+fn_readparams = "config\params_tuned_20230519_4.csv"
 
 # generate new filename for the tuned parameters
 n = 0

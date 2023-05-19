@@ -15,6 +15,7 @@ from gensim.models.ldamodel import LdaModel
 from collections import defaultdict
 import re
 import spacy
+
 # preload spacy model and stopwords for faster processing
 nlp_spacy = spacy.load("de_core_news_lg", disable=["parser", "tagger"])
 stopwords = nlp_spacy.Defaults.stop_words
@@ -26,13 +27,6 @@ import warnings
 # nlp = spacy.load("de_core_news_lg")
 
 from rake_nltk import Rake
-# Initialize RAKE with stopword list and length filters
-rake_object = Rake(
-    language="german",
-    stopwords=stopwords,
-    min_length=1,  # parameters["min_length"],
-    max_length=5, # is updated in function
-)
 import pandas as pd
 import nltk
 from src.extract_timestamp import filter_string
@@ -57,7 +51,7 @@ def spacy_ner(messages, parameters, spacy_docs):
     results = []
     # Process the messages in batches and extract
     # locations, organizations and miscellaneous entities
-    
+
     for doc in spacy_docs:
         keywords = []
         for ent in doc.ents:
@@ -78,7 +72,16 @@ def spacy_ner(messages, parameters, spacy_docs):
 def rake(messages, parameters, rake_object):
     """Extracts keywords from the messages using the RAKE algorithm."""
 
+    # Initialize RAKE with stopword list and length filters
+    rake_object = Rake(
+        language="german",
+        stopwords=stopwords,
+        min_length=1,  # parameters["min_length"],
+        max_length=parameters["max_length"],
+    )
+
     # rake_object.max_length = parameters["max_length"]
+    # min_length=2, max_length=4
     results = []
 
     for message in messages:
@@ -143,7 +146,7 @@ def tf_IDF(cleaned_texts, parameters):
 
     for index, text in enumerate(cleaned_texts):
         # # Number of top keywords to extract from each text
-        num_keywords = int(len(text) * 1.8) #parameters["num_topics_multiplier"])
+        num_keywords = int(len(text) * 1.8)  # parameters["num_topics_multiplier"])
         if num_keywords == 0:
             num_keywords = 1
 
@@ -193,19 +196,19 @@ def LDA_topic_modeling(cleaned_texts, parameters):
     corpus = [dictionary.doc2bow(text) for text in texts]
 
     # Train the LDA model
-    num_topics = int(len(cleaned_texts)) #* parameters["num_topics_multiplier"])
+    num_topics = int(parameters["num_topics_multiplier"])  # len(cleaned_texts))
     if num_topics == 0:
         num_topics = 1
     model = LdaModel(
         corpus=corpus,
         id2word=dictionary,
         num_topics=num_topics,
-        passes=15, #parameters["passes"],
+        passes=parameters["passes"],
     )
 
     # Parse the topics to get lists of keywords
     parsed_topics = []
-    topics = model.print_topics() #num_words=parameters["num_words"])
+    topics = model.print_topics(num_words=parameters["num_words"])
     for topic in topics:
         topic_keywords = topic[1]
         keywords = [
@@ -230,7 +233,9 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
 
     # Define the number of topics you want to extract
-    num_topics = int(tfidf_matrix.shape[0] * 2) #* parameters["num_topics_multiplier"])
+    num_topics = int(
+        tfidf_matrix.shape[0] * 2
+    )  # * parameters["num_topics_multiplier"])
     if num_topics == 0:
         num_topics = 1
 
@@ -270,7 +275,7 @@ def NMF_topic_modeling(cleaned_texts, parameters):
     return topics
 
 
-def sort_keywords_by_input_order(topic_keywords, cleaned_texts):
+def sort_keywords(topic_keywords, cleaned_texts):
     """
     Sorts the keywords extracted by a topic modeling algorithm based on the input order of the documents.
     Args:
@@ -299,18 +304,18 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     Finds the most common topics in a text based on the results of several keyword extraction algorithms.
 
     The function assigns weights to keywords based on different factors such as their frequency,
-    position in the text, and whether they contain digits. It then sums up the weighted scores for 
-    each keyword across all algorithms, and returns a list of the most common topics, each represented 
+    position in the text, and whether they contain digits. It then sums up the weighted scores for
+    each keyword across all algorithms, and returns a list of the most common topics, each represented
     by the longest form of the keyword found.
 
     Args:
-        keyword_dicts (dict): A dictionary where each key is the name of a keyword extraction algorithm 
+        keyword_dicts (dict): A dictionary where each key is the name of a keyword extraction algorithm
                               and the value is a list of tuples, each containing a keyword and its score.
         text (str): The text from which the keywords were extracted.
-        parameters (dict): A dictionary of parameters used for weighing the keywords. Includes the 
-                           weight assigned to each algorithm and various factors used in the calculation 
+        parameters (dict): A dictionary of parameters used for weighing the keywords. Includes the
+                           weight assigned to each algorithm and various factors used in the calculation
                            of keyword weights.
-        word_freq_dict (dict): A dictionary where each key is a word and the value is its frequency 
+        word_freq_dict (dict): A dictionary where each key is a word and the value is its frequency
                                in the corpus.
 
     Returns:
@@ -356,14 +361,17 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             ]
 
             algoscale = {
-                "spacy_NER": 1, # no score given
+                "spacy_NER": 1,  # no score given
                 "rake_keywords": 10,
                 "tf_IDF": 1,
                 "LDA": 0.05,
                 "NMF": 1,
             }
 
-            score_weight = keyword_score/algoscale[algorithm] * algorithm_weight + algorithm_weight
+            score_weight = (
+                keyword_score / algoscale[algorithm] * algorithm_weight
+                + algorithm_weight
+            )
 
             # Calculate the frequency-based weight
             frequency_threshold1 = parameters["frequency_threshold1"] * 10**6
@@ -375,7 +383,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             else:
                 frequency_weight = 0
 
-            digit_weight = ( 
+            digit_weight = (
                 sum(char.isdigit() for char in keyword)
                 / len(keyword)
                 * parameters["digit_weight"]
@@ -401,8 +409,8 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
                     + digit_weight
                 )
                 # print algorithm and keyword, all weights and score
-                #print(f"{algorithm}, {keyword}, {rankweight} + {score_weight} + {position_weight} + {frequency_weight} + {digit_weight} = {keyword_score}")
-                
+                # print(f"{algorithm}, {keyword}, {rankweight} + {score_weight} + {position_weight} + {frequency_weight} + {digit_weight} = {keyword_score}")
+
             else:
                 # calculate the score without the position weight
                 keyword_score = (
@@ -442,7 +450,9 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
             if not is_subset:
                 most_common_terms.append(longest_terms[term])
 
-    return most_common_terms[:10] # TODO: consider adding a parameter for the number of common topics
+    return most_common_terms[
+        :10
+    ]  # TODO: consider adding a parameter for the number of common topics
 
 
 def remove_stopwords(text, nlp_spacy):
@@ -507,7 +517,7 @@ def filter_keywords(keywords, nlp_spacy, parameters):
     Returns:
         list: A list of filtered keywords.
     """
-    
+
     filtered_keywords = []
     lowercase_keywords = set()
 
@@ -515,7 +525,12 @@ def filter_keywords(keywords, nlp_spacy, parameters):
     keywords = [keyword for keyword in keywords if len(keyword) > 2]
     # Create spaCy tokens from the keywords
     batch_size = parameters["batch_size"]
-    keywords_and_tokens = [(doc[0], keyword) for keyword, doc in zip(keywords, nlp_spacy.pipe(keywords, batch_size=batch_size))]
+    keywords_and_tokens = [
+        (doc[0], keyword)
+        for keyword, doc in zip(
+            keywords, nlp_spacy.pipe(keywords, batch_size=batch_size)
+        )
+    ]
 
     filtered_keywords = [
         keyword
@@ -523,40 +538,37 @@ def filter_keywords(keywords, nlp_spacy, parameters):
         if is_valid_keyword(keyword, token, lowercase_keywords)
     ]
 
-
     return filtered_keywords
 
 
 def is_valid_keyword(keyword, token, lowercase_keywords):
-        """
-        Checks if the given keyword is valid based on specified conditions.
+    """
+    Checks if the given keyword is valid based on specified conditions.
 
-        Args:
-            keyword (str): The keyword to be checked for validity.
-            token (spacy.tokens.Token): The spaCy token corresponding to the keyword.
+    Args:
+        keyword (str): The keyword to be checked for validity.
+        token (spacy.tokens.Token): The spaCy token corresponding to the keyword.
 
-        Returns:
-            bool: True if the keyword is valid, False otherwise.
-        """
-        # Find all sets of digits in the keyword
-        digit_sets = re.findall(r"\d+", keyword)
-        # Check if the keyword has only one set of digits with a maximum of 3 digits
-        valid_digit_rule = len(digit_sets) <= 1 and all(
-            len(ds) <= 3 for ds in digit_sets
-        )
-        # Check if the keyword contains a link
-        contains_link = "http" in keyword.lower() or "www" in keyword.lower()
-        
-        # Check if the keyword is not already in the set
-        not_duplicate = keyword.lower() not in lowercase_keywords
+    Returns:
+        bool: True if the keyword is valid, False otherwise.
+    """
+    # Find all sets of digits in the keyword
+    digit_sets = re.findall(r"\d+", keyword)
+    # Check if the keyword has only one set of digits with a maximum of 3 digits
+    valid_digit_rule = len(digit_sets) <= 1 and all(len(ds) <= 3 for ds in digit_sets)
+    # Check if the keyword contains a link
+    contains_link = "http" in keyword.lower() or "www" in keyword.lower()
 
-        return (
-            len(keyword) > 2
-            and not token.is_stop
-            and valid_digit_rule
-            and not contains_link
-            and not_duplicate
-        )
+    # Check if the keyword is not already in the set
+    not_duplicate = keyword.lower() not in lowercase_keywords
+
+    return (
+        len(keyword) > 2
+        and not token.is_stop
+        and valid_digit_rule
+        and not contains_link
+        and not_duplicate
+    )
 
 
 def load_word_freq_dict():
@@ -646,30 +658,32 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
 
     """
 
-    if prints: print("rake")
-    rake_keywords = rake(cleaned_texts, parameters, rake_object) #["rake"]
+    if prints:
+        print("rake")
+    rake_keywords = rake(cleaned_texts, parameters["rake"], rake_object)
     batch_size = parameters["spacy"]["batch_size"]
     spacy_docs = nlp_spacy.pipe(cleaned_texts, batch_size=batch_size)
-    if prints: print("spacy")
+    if prints:
+        print("spacy")
     spacy_docs = list(nlp_spacy.pipe(cleaned_texts))
-    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs) #
+    spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs)
 
     # remove stopwords and perform lemmatization
     # spacy_docs = nlp_spacy.pipe(cleaned_texts)
     cleaned_texts = preprocess_text(cleaned_texts, spacy_docs)
-    if prints: print("tfidf")
-    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters) #["tf_IDF"]
-    if prints: print("NMF")
+    if prints:
+        print("tfidf")
+    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters)  # ["tf_IDF"]
+    if prints:
+        print("NMF")
     NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
-    NMF_keywords = sort_keywords_by_input_order(
-        NMF_keywords, cleaned_texts
-    )  # move into function
-    if prints: print("LDA")
-    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters) #["LDA"]
-    LDA_keywords = sort_keywords_by_input_order(
-        LDA_keywords, cleaned_texts
-    )  # move into function
-    if prints: print("done")
+    NMF_keywords = sort_keywords(NMF_keywords, cleaned_texts)  # TODO: move into function
+    if prints:
+        print("LDA")
+    LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
+    LDA_keywords = sort_keywords(LDA_keywords, cleaned_texts)  # TODO: move into function
+    if prints:
+        print("done")
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
 
 
@@ -709,12 +723,13 @@ def extract_common_topics(filtered_messages, parameters, word_freq_dict, nlp_spa
             parameters["keyword_selection_parameters"],
             word_freq_dict,
         )
-        common_topics = filter_keywords(common_topics, nlp_spacy, parameters["spacy_keywords"])
+        common_topics = filter_keywords(
+            common_topics, nlp_spacy, parameters["spacy_keywords"]
+        )
         message["topic_suggestions"]["common_topics"] = common_topics
 
 
 def extract_topic(filtered_messages, parameters, word_freq_dict):
-
     # add topic_suggestions key to each message
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
@@ -743,8 +758,8 @@ def extract_topic(filtered_messages, parameters, word_freq_dict):
     ) = extract_keywords(
         [text for _, text in cleaned_texts_with_indices],
         parameters,
-        nlp_spacy, 
-        stopwords
+        nlp_spacy,
+        stopwords,
     )
     store_keywords(
         filtered_messages,

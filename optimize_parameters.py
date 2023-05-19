@@ -270,7 +270,7 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
-def backup_results(fig1,fig2):
+def backup_results(cov_matrix, fig1, fig2):
     # save the outcmaes files to the results folder
     timestamp = time.strftime("%Y%m%d_%H%M")
     folder_name = "outcmaes_" + timestamp
@@ -282,6 +282,10 @@ def backup_results(fig1,fig2):
     # save the plots to the results folder
     fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
     fig2.savefig(os.path.join(destination_folder, "covariance_map.png"))
+    
+    # write the covariance matrix to a csv file
+    cov_matrix_df = pd.DataFrame(cov_matrix)
+    cov_matrix_df.to_csv(os.path.join(destination_folder, "covariance_matrix.csv"))
 
     print("backed up outcmaes files to:", destination_folder)
 
@@ -371,18 +375,30 @@ if __name__ == "__main__":
 
         # access and plot the covariance matrix
         cov_matrix = es.C
+        # backup outcmaes files
+        backup_results(cov_matrix, fig1, fig2)
+
         fig2 = plt.figure()
-        sns.heatmap(cov_matrix, annot=True, fmt=".2f")
+        # plt.imshow(cov_matrix, cmap='coolwarm', interpolation='nearest')
+        # plt.colorbar()
+        # plt.show()
+        # input("Look at the plot and press enter to continue.")
+        # plot the covariance matrix as a heatmap
+        variable_names = [f"{key[0]}:{key[1]}" for key in opt_vars["param_keys"]]
+        sns.heatmap(cov_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
         # variable_names = [...]  # list of variable names
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
-        #             xticklabels=variable_names, yticklabels=variable_names)
 
         plt.show()
         input("Look at the plot and press enter to continue.")
 
-        # backup outcmaes files
-        backup_results(fig1,fig2)
+        std_devs = np.sqrt(np.diag(cov_matrix))
+        corr_matrix = cov_matrix / np.outer(std_devs, std_devs)
+        sns.heatmap(corr_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
+        plt.show()
+        input("Look at the plot and press enter to continue.")
+
 
         # save optimization results to file
         with open("outcmaes/optimization_summary.json", "w") as f:
