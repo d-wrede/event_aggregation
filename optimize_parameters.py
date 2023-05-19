@@ -19,20 +19,21 @@ import warnings
 import csv
 from sklearn.exceptions import ConvergenceWarning
 from matplotlib import pyplot as plt
-import pprint
-
+from jsonmerge import merge
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
 n_cores = 15
 # cmaes population size, typically n_cores * integer
-popsize = 15
+popsize = 45
 # Set the time penalty factor for the objective function
-time_penalty_factor = 1
+time_penalty_factor = 0.5
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
-config_path = "config/params_tuned_20230518_0.csv"
+config_path = "config/params_tuned_20230519_4.csv"
 
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
@@ -85,7 +86,6 @@ def lists_to_dicts(X, param_keys, data_types):
             # If the first key is not in the dictionary, create a new entry
             if key1 not in params:
                 params[key1] = {}
-
             # Assign the current parameter value to the appropriate key in the dictionary
             params[key1][key2] = x[i] if data_types[i] == "float" else int(x[i])
 
@@ -222,7 +222,9 @@ def optimize_parameters(es, opt_vars, const_params, cma_bounds):
     # Turn constant parameter lists into parameter dictionaries lists
     const_par_dict = lists_to_dicts([const_params["param_values"]], const_params["param_keys"], const_params["data_types"])
     # Combine the constant and optimization variable dictionaries
-    par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
+
+    par_dicts = [merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts]
+    # par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
 
     # evaluate function in parallel
     results = pool.map_async(objective_function, par_dicts).get()
@@ -298,7 +300,7 @@ options = {
     "verb_disp": 1,
     "tolx": 1e-6,
     "tolfun": 30,
-    "maxiter": 200,
+    "maxiter": 100,
     #'CMA_diagonal': True,
 }
 
@@ -363,6 +365,17 @@ if __name__ == "__main__":
         cma.plot()
         plt.show()
         input("Look at the plots and press enter to continue.")
+
+        # access and plot the covariance matrix
+        cov_matrix = es.C
+        sns.heatmap(cov_matrix, annot=True, fmt=".2f")
+        # variable_names = [...]  # list of variable names
+        # cmap='coolwarm'
+        # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
+        #             xticklabels=variable_names, yticklabels=variable_names)
+        plt.savefig('outcmaes/heatmap.png')
+        plt.show()
+        input("Look at the plot and press enter to continue.")
 
         # save optimization results to file
         with open("outcmaes/optimization_summary.json", "w") as f:

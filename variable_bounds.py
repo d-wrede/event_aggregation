@@ -4,7 +4,7 @@ import re
 import os
 from optimize_parameters import read_parameter_file, unscale_variables
 
-fn_readparams = "config/params_tuned_20230518.csv"
+fn_readparams = "config/params_tuned_20230519_4.csv"
 
 # generate new filename for the tuned parameters
 n = 0
@@ -242,6 +242,7 @@ def update_params_file(df_analysed, fn_read, fn_write):
 
     # remove whitespace from column names
     params_indexed_df.columns = params_indexed_df.columns.str.strip()
+    params_indexed_df["parameter1"] = params_indexed_df.iloc[:, 0].str.strip()
     params_indexed_df["parameter2"] = params_indexed_df.iloc[:, 1].str.strip()
     # to do it for all columns, consider
     # for col in params_indexed_df.columns:
@@ -256,7 +257,9 @@ def update_params_file(df_analysed, fn_read, fn_write):
         # print(f"index: {index}, row:\n{row}")
         # print()
         # Find the corresponding row in 'params_indexed_df' based on the parameter name
-        match = params_indexed_df["parameter2"] == index.split(":")[-1]
+        match1 = params_indexed_df["parameter1"] == index.split(":")[0]
+        match2 = params_indexed_df["parameter2"] == index.split(":")[-1]
+        match = match1 & match2
         # print("match:", match)
 
         # Update the 'initial_value', 'lower_bound', and 'upper_bound' columns
