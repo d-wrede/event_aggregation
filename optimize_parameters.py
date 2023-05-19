@@ -270,14 +270,19 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
-def backup_results():
+def backup_results(fig1,fig2):
     # save the outcmaes files to the results folder
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    timestamp = time.strftime("%Y%m%d_%H%M")
     folder_name = "outcmaes_" + timestamp
     destination_folder = os.path.join("results", folder_name)
     os.makedirs(destination_folder, exist_ok=True)
     for file in os.listdir("outcmaes"):
         shutil.copy(os.path.join("outcmaes", file), destination_folder)
+
+    # save the plots to the results folder
+    fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
+    fig2.savefig(os.path.join(destination_folder, "covariance_map.png"))
+
     print("backed up outcmaes files to:", destination_folder)
 
 
@@ -355,27 +360,29 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Optimization interrupted by user.")
     finally:
-        # backup outcmaes files
-        backup_results()
-
         es.result_pretty()
         print("Optimization time: ", time.time() - main_start_time, "seconds")
 
         # Generate plots from the logged data
+        fig1 = plt.figure()
         cma.plot()
         plt.show()
         input("Look at the plots and press enter to continue.")
 
         # access and plot the covariance matrix
         cov_matrix = es.C
+        fig2 = plt.figure()
         sns.heatmap(cov_matrix, annot=True, fmt=".2f")
         # variable_names = [...]  # list of variable names
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
         #             xticklabels=variable_names, yticklabels=variable_names)
-        plt.savefig('outcmaes/heatmap.png')
+
         plt.show()
         input("Look at the plot and press enter to continue.")
+
+        # backup outcmaes files
+        backup_results(fig1,fig2)
 
         # save optimization results to file
         with open("outcmaes/optimization_summary.json", "w") as f:
