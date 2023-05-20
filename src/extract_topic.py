@@ -32,7 +32,7 @@ import nltk
 from src.extract_timestamp import filter_string
 
 # printswitch for debugging, due to multiprocessing
-prints = False
+printss = False
 
 
 def spacy_ner(messages, parameters, spacy_docs):
@@ -69,7 +69,7 @@ def spacy_ner(messages, parameters, spacy_docs):
     return results
 
 
-def rake(messages, parameters, rake_object):
+def rake(messages, parameters):
     """Extracts keywords from the messages using the RAKE algorithm."""
 
     # Initialize RAKE with stopword list and length filters
@@ -123,14 +123,21 @@ def tf_IDF(cleaned_texts, parameters):
             "ignore",
             message="The parameter 'token_pattern' will not be used since 'tokenizer' is not None'",
         )
-
+        
+        if printss: 
+            print("grab me")
+        # ngram range options
+        ngram_options = [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3), (1, 4), (2, 4), (3, 4), (4, 4)]
+        ngram_range = ngram_options[parameters["ngram_range_index"]]
+        if printss:
+            print("vectorizer go")
         # Create the TfidfVectorizer with a custom tokenizer, analyzer, and the new parameters
         vectorizer = TfidfVectorizer(
             tokenizer=lambda text: text.split(),
             analyzer="word",
             # max_df=parameters["max_df"],
             # min_df=parameters["min_df"],
-            # ngram_range=(parameters["ngram_range1"], parameters["ngram_range2"]),
+            # ngram_range=ngram_range,
             # max_features=parameters["max_features"],
         )
 
@@ -139,19 +146,21 @@ def tf_IDF(cleaned_texts, parameters):
 
         # Get the feature names (words)
         feature_names = vectorizer.get_feature_names_out()
-    # min_keywords = parameters["min_keywords"]
-    # max_keywords = parameters["max_keywords"]
+    if printss:
+        print("grab min keywords")
+    min_keywords = parameters["min_keywords"]
+    max_keywords = parameters["max_keywords"]
 
     keywords = []
 
     for index, text in enumerate(cleaned_texts):
-        # # Number of top keywords to extract from each text
-        num_keywords = int(len(text) * 1.8)  # parameters["num_topics_multiplier"])
-        if num_keywords == 0:
-            num_keywords = 1
+        # Number of top keywords to extract from each text
+        num_keywords = int(len(text) * parameters["num_keywords_multiplier"])
+        if printss:
+            print("grabbed num keywords")
 
-        # # Clip the value to the defined boundaries
-        # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
+        # Clip the value to the defined boundaries
+        num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
         # Get the indices of the top num_keywords features in the text
         top_feature_indices = (
@@ -162,9 +171,6 @@ def tf_IDF(cleaned_texts, parameters):
         top_keywords_and_scores = [
             (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
         ]
-        # top_keywords_and_scores = [
-        #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
-        # ]
 
         original_case_keywords = []
         for keyword, score in top_keywords_and_scores:
@@ -658,12 +664,14 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
 
     """
 
-    if prints:
-        print("rake")
-    rake_keywords = rake(cleaned_texts, parameters["rake"], rake_object)
+    if printss:
+        print("rake1")
+    rake_keywords = rake(cleaned_texts, parameters["rake"])
+    if printss:
+        print("rake done2")
     batch_size = parameters["spacy"]["batch_size"]
     spacy_docs = nlp_spacy.pipe(cleaned_texts, batch_size=batch_size)
-    if prints:
+    if printss:
         print("spacy")
     spacy_docs = list(nlp_spacy.pipe(cleaned_texts))
     spacy_keywords = spacy_ner(cleaned_texts, parameters["spacy"], spacy_docs)
@@ -671,18 +679,18 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
     # remove stopwords and perform lemmatization
     # spacy_docs = nlp_spacy.pipe(cleaned_texts)
     cleaned_texts = preprocess_text(cleaned_texts, spacy_docs)
-    if prints:
+    if printss:
         print("tfidf")
-    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters)  # ["tf_IDF"]
-    if prints:
+    tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
+    if printss:
         print("NMF")
     NMF_keywords = NMF_topic_modeling(cleaned_texts, parameters["NMF"])
     NMF_keywords = sort_keywords(NMF_keywords, cleaned_texts)  # TODO: move into function
-    if prints:
+    if printss:
         print("LDA")
     LDA_keywords = LDA_topic_modeling(cleaned_texts, parameters["LDA"])
     LDA_keywords = sort_keywords(LDA_keywords, cleaned_texts)  # TODO: move into function
-    if prints:
+    if printss:
         print("done")
     return spacy_keywords, rake_keywords, tf_IDF_keywords, LDA_keywords, NMF_keywords
 

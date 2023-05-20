@@ -2,6 +2,7 @@
 # algorithm. It uses the CMA-ES algorithm to find the optimal parameters.
 # The parameters are saved in the config/params.yaml file.
 
+import pprint
 import cma
 import os
 import shutil
@@ -24,16 +25,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
-n_cores = 15
+n_cores = 5
 # cmaes population size, typically n_cores * integer
-popsize = 45
+popsize = 15
 # Set the time penalty factor for the objective function
 time_penalty_factor = 0.5
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
-config_path = "config/params_tuned_20230519_4.csv"
+config_path = "config/params_tuned_20230520_1.csv"
 
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
@@ -89,12 +90,17 @@ def lists_to_dicts(X, param_keys, data_types):
             # Assign the current parameter value to the appropriate key in the dictionary
             params[key1][key2] = x[i] if data_types[i] == "float" else int(x[i])
 
-        # ensure that tf_IDF ngram_range1 <= ngram_range2
-        # params["tf_IDF"]["ngram_range1"] = min(
-        #     params["tf_IDF"]["ngram_range1"], params["tf_IDF"]["ngram_range2"]
-        # )
         dicts.append(params)
     return dicts
+
+
+def check_ngrams(par_dicts):
+    """Check the ngram parameters and set the ngram parameters to 1 if they are not valid"""
+    for par_dict in par_dicts:
+        # ensure that tf_IDF ngram_range1 <= ngram_range2
+        par_dict["tf_IDF"]["ngram_range1"] = min(
+            par_dict["tf_IDF"]["ngram_range1"], par_dict["tf_IDF"]["ngram_range2"]
+        )
 
 
 def read_parameter_file(file_path):
@@ -224,7 +230,11 @@ def optimize_parameters(es, opt_vars, const_params, cma_bounds):
     # Combine the constant and optimization variable dictionaries
 
     par_dicts = [merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts]
-    # par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
+    
+    # # par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
+    # print("par_dicts[0]:\n")
+    # pprint.pprint(par_dicts[0])
+
 
     # evaluate function in parallel
     results = pool.map_async(objective_function, par_dicts).get()
@@ -270,7 +280,7 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
-def backup_results(cov_matrix, fig1, fig2):
+def backup_results(cov_matrix):
     # save the outcmaes files to the results folder
     timestamp = time.strftime("%Y%m%d_%H%M")
     folder_name = "outcmaes_" + timestamp
@@ -279,15 +289,16 @@ def backup_results(cov_matrix, fig1, fig2):
     for file in os.listdir("outcmaes"):
         shutil.copy(os.path.join("outcmaes", file), destination_folder)
 
-    # save the plots to the results folder
-    fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
-    fig2.savefig(os.path.join(destination_folder, "covariance_map.png"))
+    # # save the plots to the results folder
+    # fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
+    # fig2.savefig(os.path.join(destination_folder, "covariance_map.png"))
     
     # write the covariance matrix to a csv file
     cov_matrix_df = pd.DataFrame(cov_matrix)
     cov_matrix_df.to_csv(os.path.join(destination_folder, "covariance_matrix.csv"))
 
     print("backed up outcmaes files to:", destination_folder)
+    return destination_folder
 
 
 # Read the parameter file
@@ -308,7 +319,7 @@ options = {
     "popsize": popsize,
     "verb_disp": 1,
     "tolx": 1e-6,
-    "tolfun": 30,
+    #"tolfun": 3,
     "maxiter": 100,
     #'CMA_diagonal': True,
 }
@@ -348,6 +359,12 @@ if __name__ == "__main__":
             )
             print("runtimes:", runtimes)
 
+            if counter % 10 == 0:
+                # print par_dicts with best performance
+                min_idx = np.argmin(performance)
+                print("best parameters:")
+                pprint.pprint(par_dicts[min_idx])
+
             # Print the best performance and longest runtime every iteration
             if counter >= 2:
                 print_performance(performance, runtimes, counter)
@@ -367,18 +384,20 @@ if __name__ == "__main__":
         es.result_pretty()
         print("Optimization time: ", time.time() - main_start_time, "seconds")
 
-        # Generate plots from the logged data
-        fig1 = plt.figure()
-        cma.plot()
-        plt.show()
-        input("Look at the plots and press enter to continue.")
-
         # access and plot the covariance matrix
         cov_matrix = es.C
-        # backup outcmaes files
-        backup_results(cov_matrix, fig1, fig2)
 
-        fig2 = plt.figure()
+        # backup outcmaes files
+        dest_folder = backup_results(cov_matrix)
+
+        # Generate plots from the logged data
+        cma.plot()
+        plt.savefig("outcmaes/result_diagram.png") #plt.savefig(f"{dest_folder}/result_diagram.png")
+        plt.show(block=True)
+        input("Look at the plots and press enter to continue.")
+
+        
+
         # plt.imshow(cov_matrix, cmap='coolwarm', interpolation='nearest')
         # plt.colorbar()
         # plt.show()
@@ -389,13 +408,15 @@ if __name__ == "__main__":
         # variable_names = [...]  # list of variable names
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
-
-        plt.show()
+        plt.savefig("outcmaes/covariance_map.png")
+        plt.show(block=True)
         input("Look at the plot and press enter to continue.")
-
+        
         std_devs = np.sqrt(np.diag(cov_matrix))
         corr_matrix = cov_matrix / np.outer(std_devs, std_devs)
+        pprint.pprint(corr_matrix)
         sns.heatmap(corr_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
+        plt.savefig("outcmaes/correlation_map.png")
         plt.show()
         input("Look at the plot and press enter to continue.")
 
