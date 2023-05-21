@@ -25,16 +25,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
-n_cores = 5
+n_cores = 15
 # cmaes population size, typically n_cores * integer
-popsize = 15
+popsize = 15 * 5
+maxiter = 2000
 # Set the time penalty factor for the objective function
 time_penalty_factor = 0.5
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
 profile_filename = "profile_results.prof"
-config_path = "config/params_tuned_20230520_1.csv"
+config_path = "config/params_tuned_20230520_2.csv"
 
 # only profile the objective function / keyword selection algorithm
 cProfile_switch = False
@@ -283,11 +284,15 @@ def print_performance(performance, runtimes, param_dicts):
 def backup_results(cov_matrix):
     # save the outcmaes files to the results folder
     timestamp = time.strftime("%Y%m%d_%H%M")
-    folder_name = "outcmaes_" + timestamp
-    destination_folder = os.path.join("results", folder_name)
-    os.makedirs(destination_folder, exist_ok=True)
-    for file in os.listdir("outcmaes"):
-        shutil.copy(os.path.join("outcmaes", file), destination_folder)
+    src_folder = "outcmaes"
+    new_folder_name = "outcmaes_" + timestamp
+    destination_folder = os.path.join("results", new_folder_name)
+    # os.makedirs(destination_folder, exist_ok=True)
+    # for file in os.listdir("outcmaes"):
+    #     shutil.copy(os.path.join("outcmaes", file), destination_folder)
+
+    # Copy the entire directory tree to the new location
+    shutil.copytree(src_folder, destination_folder)
 
     # # save the plots to the results folder
     # fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
@@ -320,7 +325,7 @@ options = {
     "verb_disp": 1,
     "tolx": 1e-6,
     #"tolfun": 3,
-    "maxiter": 100,
+    "maxiter": maxiter,
     #'CMA_diagonal': True,
 }
 
@@ -392,9 +397,9 @@ if __name__ == "__main__":
 
         # Generate plots from the logged data
         cma.plot()
-        plt.savefig("outcmaes/result_diagram.png") #plt.savefig(f"{dest_folder}/result_diagram.png")
+        plt.savefig(f"{dest_folder}/result_diagram.png")
         plt.show(block=True)
-        input("Look at the plots and press enter to continue.")
+        # input("Look at the plots and press enter to continue.")
 
         
 
@@ -404,21 +409,27 @@ if __name__ == "__main__":
         # input("Look at the plot and press enter to continue.")
         # plot the covariance matrix as a heatmap
         variable_names = [f"{key[0]}:{key[1]}" for key in opt_vars["param_keys"]]
+        plt.figure(figsize=(50, 50))
         sns.heatmap(cov_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
         # variable_names = [...]  # list of variable names
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
-        plt.savefig("outcmaes/covariance_map.png")
+        plt.savefig(f"{dest_folder}/covariance_map.png")
         plt.show(block=True)
-        input("Look at the plot and press enter to continue.")
+        # input("Look at the plot and press enter to continue.")
         
         std_devs = np.sqrt(np.diag(cov_matrix))
         corr_matrix = cov_matrix / np.outer(std_devs, std_devs)
         pprint.pprint(corr_matrix)
+        # sns.heatmap(corr_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
+        # plt.savefig(f"{dest_folder}/correlation_map.png")
+        # plt.show(block=True)
+        plt.figure(figsize=(50, 50))
         sns.heatmap(corr_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
-        plt.savefig("outcmaes/correlation_map.png")
-        plt.show()
-        input("Look at the plot and press enter to continue.")
+        plt.xticks(rotation=45)  # Rotate x-axis labels
+        plt.savefig(f"{dest_folder}/correlation_map.png")
+        plt.show(block=True)
+        # input("Look at the plot and press enter to continue.")
 
 
         # save optimization results to file

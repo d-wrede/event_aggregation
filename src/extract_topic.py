@@ -135,10 +135,10 @@ def tf_IDF(cleaned_texts, parameters):
         vectorizer = TfidfVectorizer(
             tokenizer=lambda text: text.split(),
             analyzer="word",
-            # max_df=parameters["max_df"],
-            # min_df=parameters["min_df"],
-            # ngram_range=ngram_range,
-            # max_features=parameters["max_features"],
+            max_df=parameters["max_df"],
+            #min_df=parameters["min_df"],
+            ngram_range=ngram_range,
+            max_features=parameters["max_features"],
         )
 
         # Calculate the TF-IDF matrix
@@ -156,6 +156,9 @@ def tf_IDF(cleaned_texts, parameters):
     for index, text in enumerate(cleaned_texts):
         # Number of top keywords to extract from each text
         num_keywords = int(len(text) * parameters["num_keywords_multiplier"])
+        # if num_keywords == 0:
+        #     num_keywords = 1
+
         if printss:
             print("grabbed num keywords")
 
