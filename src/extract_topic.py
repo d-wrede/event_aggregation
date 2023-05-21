@@ -817,6 +817,7 @@ def evaluate_topic_extraction(filtered_messages):
         # compare the common topics in 'topics' with the common topics in 'message'
         # step through each list in the dictionary
         for key, topics in message["topic_suggestions"].items():
+            # skip the manually chosen topics
             if key == "chosen_topics":
                 continue
             # step through each topic in the list

@@ -111,7 +111,7 @@ def process_messages(word_freq_dict, parameters, messages):
     # for message in messages[:number_of_messages]
     # if 'timestamps' in message
     # ]
-    filtered_messages = messages[:number_of_messages]
+    filtered_messages = messages #[:number_of_messages]
     ### extract topic ###
     extract_topic(filtered_messages, copy(parameters), word_freq_dict)
 
