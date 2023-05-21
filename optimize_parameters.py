@@ -6,6 +6,7 @@ import pprint
 import cma
 import os
 import shutil
+
 # from cma import transformations
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ from main import process_messages
 import time
 import multiprocessing as mp
 from multiprocessing import freeze_support
+from multiprocessing import Pool
 import cProfile
 import pstats
 import warnings
@@ -25,10 +27,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
-n_cores = 15
+n_cores = 4
 # cmaes population size, typically n_cores * integer
-popsize = 15 * 5
-maxiter = 2000
+popsize = 3
+maxiter = 1
 # Set the time penalty factor for the objective function
 time_penalty_factor = 0.5
 
@@ -67,7 +69,10 @@ def objective_function(parameters):
     # Call the process_messages function
     performance = process_messages(word_freq_dict, parameters, messages)
     end_time = time.time()
-    perf_score = performance["common_topics"] - (end_time - start_time) * time_penalty_factor
+    print("performance: ", performance)
+    perf_score = (
+        performance["common_topics"] - (end_time - start_time) * time_penalty_factor
+    )
 
     return performance["common_topics"], -perf_score, end_time - start_time
 
@@ -204,10 +209,10 @@ def unscale_variables(scaled_variables, opt_vars, cma_bounds):
     """Unscale the variables from the range [cma_lower_bound, cma_upper_bound] to the range [lower_bound, upper_bound]"""
     unscaled_variables = [
         lb
-        + (scaled_value - cma_bounds[0])
-        * (ub - lb)
-        / (cma_bounds[1] - cma_bounds[0])
-        for scaled_value, lb, ub in zip(scaled_variables, opt_vars["lower_bounds"], opt_vars["upper_bounds"])
+        + (scaled_value - cma_bounds[0]) * (ub - lb) / (cma_bounds[1] - cma_bounds[0])
+        for scaled_value, lb, ub in zip(
+            scaled_variables, opt_vars["lower_bounds"], opt_vars["upper_bounds"]
+        )
     ]
     return unscaled_variables
 
@@ -220,25 +225,35 @@ def optimize_parameters(es, opt_vars, const_params, cma_bounds):
 
     # Apply the scale_coordinates transformation to the objective function
     unscaled_candidates = [
-        unscale_variables(candidate, opt_vars, cma_bounds)
-        for candidate in X
+        unscale_variables(candidate, opt_vars, cma_bounds) for candidate in X
     ]
 
     # Turn optimization variable lists into parameter dictionaries lists
-    opt_var_dicts = lists_to_dicts(unscaled_candidates, opt_vars["param_keys"], opt_vars["data_types"])
+    opt_var_dicts = lists_to_dicts(
+        unscaled_candidates, opt_vars["param_keys"], opt_vars["data_types"]
+    )
     # Turn constant parameter lists into parameter dictionaries lists
-    const_par_dict = lists_to_dicts([const_params["param_values"]], const_params["param_keys"], const_params["data_types"])
+    const_par_dict = lists_to_dicts(
+        [const_params["param_values"]],
+        const_params["param_keys"],
+        const_params["data_types"],
+    )
     # Combine the constant and optimization variable dictionaries
 
-    par_dicts = [merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts]
-    
+    par_dicts = [
+        merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts
+    ]
+
     # # par_dicts = [dict(opt_var_dict, **const_par_dict[0]) for opt_var_dict in opt_var_dicts]
     # print("par_dicts[0]:\n")
     # pprint.pprint(par_dicts[0])
 
-
     # evaluate function in parallel
-    results = pool.map_async(objective_function, par_dicts).get()
+    # results = pool.map_async(objective_function, par_dicts).get()
+    with Pool(processes=4) as pool:  # Substitute 4 with number of desired processes
+        for par_dict in par_dicts:
+            result = pool.apply(objective_function, args=(par_dict,))
+            print(result)
 
     # Extract the performance and runtime values from the results
     performance, f_values, runtimes = zip(*results)
@@ -281,6 +296,7 @@ def print_performance(performance, runtimes, param_dicts):
         (time.time() - main_start_time) / (counter * options["popsize"]),
     )
 
+
 def backup_results(cov_matrix):
     # save the outcmaes files to the results folder
     timestamp = time.strftime("%Y%m%d_%H%M")
@@ -297,7 +313,7 @@ def backup_results(cov_matrix):
     # # save the plots to the results folder
     # fig1.savefig(os.path.join(destination_folder, "result_diagram.png"))
     # fig2.savefig(os.path.join(destination_folder, "covariance_map.png"))
-    
+
     # write the covariance matrix to a csv file
     cov_matrix_df = pd.DataFrame(cov_matrix)
     cov_matrix_df.to_csv(os.path.join(destination_folder, "covariance_matrix.csv"))
@@ -324,7 +340,7 @@ options = {
     "popsize": popsize,
     "verb_disp": 1,
     "tolx": 1e-6,
-    #"tolfun": 3,
+    # "tolfun": 3,
     "maxiter": maxiter,
     #'CMA_diagonal': True,
 }
@@ -401,8 +417,6 @@ if __name__ == "__main__":
         plt.show(block=True)
         # input("Look at the plots and press enter to continue.")
 
-        
-
         # plt.imshow(cov_matrix, cmap='coolwarm', interpolation='nearest')
         # plt.colorbar()
         # plt.show()
@@ -410,14 +424,20 @@ if __name__ == "__main__":
         # plot the covariance matrix as a heatmap
         variable_names = [f"{key[0]}:{key[1]}" for key in opt_vars["param_keys"]]
         plt.figure(figsize=(50, 50))
-        sns.heatmap(cov_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
+        sns.heatmap(
+            cov_matrix,
+            annot=True,
+            fmt=".2f",
+            xticklabels=variable_names,
+            yticklabels=variable_names,
+        )
         # variable_names = [...]  # list of variable names
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
         plt.savefig(f"{dest_folder}/covariance_map.png")
         plt.show(block=True)
         # input("Look at the plot and press enter to continue.")
-        
+
         std_devs = np.sqrt(np.diag(cov_matrix))
         corr_matrix = cov_matrix / np.outer(std_devs, std_devs)
         pprint.pprint(corr_matrix)
@@ -425,12 +445,17 @@ if __name__ == "__main__":
         # plt.savefig(f"{dest_folder}/correlation_map.png")
         # plt.show(block=True)
         plt.figure(figsize=(50, 50))
-        sns.heatmap(corr_matrix, annot=True, fmt=".2f", xticklabels=variable_names, yticklabels=variable_names)
+        sns.heatmap(
+            corr_matrix,
+            annot=True,
+            fmt=".2f",
+            xticklabels=variable_names,
+            yticklabels=variable_names,
+        )
         plt.xticks(rotation=45)  # Rotate x-axis labels
         plt.savefig(f"{dest_folder}/correlation_map.png")
         plt.show(block=True)
         # input("Look at the plot and press enter to continue.")
-
 
         # save optimization results to file
         with open("outcmaes/optimization_summary.json", "w") as f:

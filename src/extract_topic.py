@@ -717,11 +717,27 @@ def store_keywords(
         message["topic_suggestions"]["NMF"] = NMF_keywords[i]
 
 
+def filter_keywords_tuples(keywords_tuples, nlp_spacy, parameters):
+    # If keywords_tuples is an empty list, return an empty list
+    if not keywords_tuples:
+        return []
+    
+    # Separate keywords and values
+    keywords, values = zip(*keywords_tuples)
+    # Filter keywords
+    filtered_keywords = filter_keywords(keywords, nlp_spacy, parameters)
+    # Pair filtered keywords with their original values
+    filtered_keywords_tuples = [(kw, v) for kw, v in zip(keywords, values) if kw in filtered_keywords]
+    return filtered_keywords_tuples
+
+
+
 def extract_common_topics(filtered_messages, parameters, word_freq_dict, nlp_spacy):
     """Extract common topics, using the function 'find_common_topics',
     from the messages and store them in the message dictionaries."""
     for message in filtered_messages:
         if "common_topics" in message["topic_suggestions"]:
+            print("common topics already extracted: ", message["id"])
             continue
 
         # print("message: ", filter_string(message["message"][:first_letters]))
@@ -737,7 +753,29 @@ def extract_common_topics(filtered_messages, parameters, word_freq_dict, nlp_spa
         common_topics = filter_keywords(
             common_topics, nlp_spacy, parameters["spacy_keywords"]
         )
+        # add common topics to message
         message["topic_suggestions"]["common_topics"] = common_topics
+        print("common topics: ", message["topic_suggestions"]["common_topics"])
+        print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
+        message["topic_suggestions"]["spacy_NER"] = filter_keywords_tuples(message["topic_suggestions"]["spacy_NER"], nlp_spacy, parameters["spacy_keywords"])
+        print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
+        # message["topic_suggestions"]["spacy_NER"] = filter_keywords(message["topic_suggestions"]["spacy_NER"], nlp_spacy, parameters["spacy_keywords"])
+        # message["topic_suggestions"]["rake_keywords"] = filter_keywords(message["topic_suggestions"]["rake_keywords"], nlp_spacy, parameters["spacy_keywords"])
+        # message["topic_suggestions"]["tf_IDF"] = filter_keywords(message["topic_suggestions"]["tf_IDF"], nlp_spacy, parameters["spacy_keywords"])
+        # message["topic_suggestions"]["LDA"] = filter_keywords(message["topic_suggestions"]["LDA"], nlp_spacy, parameters["spacy_keywords"])
+        # message["topic_suggestions"]["NMF"] = filter_keywords(message["topic_suggestions"]["NMF"], nlp_spacy, parameters["spacy_keywords"])
+        
+        # filter keywords from algorithms as well
+        # for key, keywords in message["topic_suggestions"].items():
+        #     if key == "chosen_topics":
+        #         continue
+        #     message["topic_suggestions"][key] = filter_keywords(
+        #         keywords, nlp_spacy, parameters["spacy_keywords"]
+        #     )
+
+
+
+
 
 
 def extract_topic(filtered_messages, parameters, word_freq_dict):
@@ -745,6 +783,9 @@ def extract_topic(filtered_messages, parameters, word_freq_dict):
     for message in filtered_messages:
         message.setdefault("topic_suggestions", {})
 
+    print("parameters: ", parameters)
+
+    # check for predefined topic "Thema: ..."
     check_if_topic(filtered_messages)
 
     # Clean and preprocess the texts
@@ -813,6 +854,7 @@ def evaluate_topic_extraction(filtered_messages):
         # if not found_message:
         #     print("message not found: ", message["id"])
         #     continue
+        # print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
 
         # compare the common topics in 'topics' with the common topics in 'message'
         # step through each list in the dictionary
