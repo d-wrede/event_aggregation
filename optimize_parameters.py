@@ -342,7 +342,7 @@ options = {
     "tolx": 1e-6,
     # "tolfun": 3,
     "maxiter": maxiter,
-    #'CMA_diagonal': True,
+    #'CMA_diagonal': True, performance:  {'spacy_NER': 1548, 'rake_keywords': 2794, 'tf_IDF': 45, 'LDA': 457, 'NMF': 925, 'common_topics': 3053}
 }
 
 # if cProfile_switch:

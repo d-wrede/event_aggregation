@@ -100,23 +100,6 @@ def rake(messages, parameters):
     return results
 
 
-# def cluster_messages(cleaned_texts, model):
-#     # Load the pre-trained model
-#     model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-
-#     # Generate embeddings for your texts
-#     embeddings = model.encode(cleaned_texts)
-
-#     # Cluster the embeddings using K-means
-#     num_clusters = 3
-#     kmeans = KMeans(n_clusters=num_clusters)
-#     cluster_labels = kmeans.fit_predict(embeddings)
-
-#     # Print the cluster assignment for each text
-#     # for text, label in zip(cleaned_texts, cluster_labels):
-#     #     print(f"Text: {text}\nCluster: {label}\n")
-
-
 def tf_IDF(cleaned_texts, parameters):
     with warnings.catch_warnings():
         warnings.filterwarnings(
@@ -195,11 +178,9 @@ def tf_IDF(cleaned_texts, parameters):
         ]
 
         keywords.append(original_case_keywords)
+    print("tfidf keywords: ", keywords)
     return keywords
 
-
-from gensim import corpora
-from gensim.models import LdaModel
 
 def LDA_topic_modeling(cleaned_texts, parameters):
     # Create a list of lists containing words for each text
@@ -229,7 +210,7 @@ def LDA_topic_modeling(cleaned_texts, parameters):
     for text_bow in corpus:
         # Get the topic distribution for the text
         text_topics = model.get_document_topics(text_bow)
-        
+
         # Store the keywords for each topic of the text
         text_keywords = []
 
@@ -237,11 +218,11 @@ def LDA_topic_modeling(cleaned_texts, parameters):
         for topic_id, prob in text_topics:
             # Get the keywords for the topic
             topic = model.show_topic(topic_id, topn=parameters["num_words"])
-            
+
             # Format the keywords and their probabilities, and add them to the text's keywords
-            keywords = [(word, prob) for word, prob in topic]
+            keywords = list(topic)
             text_keywords.extend(keywords)
-        
+
         # Add the text's keywords to the overall list
         parsed_topics.append(text_keywords)
 
@@ -273,10 +254,10 @@ def NMF_topic_modeling(cleaned_texts, parameters):
         # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
         max_iter=parameters["max_iter"],
-        tol=parameters["tol"] / 10000,
-        alpha_W=parameters["alpha_W"],
-        alpha_H=parameters["alpha_H"],
-        l1_ratio=parameters["l1_ratio"],
+        # tol=parameters["tol"] / 10000,
+        # alpha_W=parameters["alpha_W"],
+        # alpha_H=parameters["alpha_H"],
+        # l1_ratio=parameters["l1_ratio"],
         random_state=42,
     )
 
