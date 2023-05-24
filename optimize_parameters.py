@@ -27,12 +27,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
-n_cores = 3
+n_cores = 15
 # cmaes population size, typically n_cores * integer
-popsize = n_cores
-maxiter = 300
+popsize = n_cores * 3
+maxiter = 3000
 # Set the time penalty factor for the objective function
-time_penalty_factor = 0.5
+time_penalty_factor = 0
 
 # Set the path to the file containing the most recent best parameters
 xrecentbest_path = "outcmaes/xrecentbest.dat"
@@ -249,11 +249,11 @@ def optimize_parameters(es, opt_vars, const_params, cma_bounds):
     # pprint.pprint(par_dicts[0])
 
     # evaluate function in parallel
-    # results = pool.map_async(objective_function, par_dicts).get()
-    with Pool(processes=4) as pool:  # Substitute 4 with number of desired processes
-        for par_dict in par_dicts:
-            result = pool.apply(objective_function, args=(par_dict,))
-            print(result)
+    results = pool.map_async(objective_function, par_dicts).get()
+    # with Pool(processes=4) as pool:  # Substitute 4 with number of desired processes
+    #     for par_dict in par_dicts:
+    #         result = pool.apply(objective_function, args=(par_dict,))
+    #         print(result)
 
     # Extract the performance and runtime values from the results
     performance, f_values, runtimes = zip(*results)
@@ -435,7 +435,7 @@ if __name__ == "__main__":
         # cmap='coolwarm'
         # sns.heatmap(cov_matrix, annot=True, fmt=".2f",
         plt.savefig(f"{dest_folder}/covariance_map.png")
-        plt.show(block=True)
+        # plt.show(block=True)
         # input("Look at the plot and press enter to continue.")
 
         std_devs = np.sqrt(np.diag(cov_matrix))

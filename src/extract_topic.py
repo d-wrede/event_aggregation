@@ -100,28 +100,107 @@ def rake(messages, parameters):
     return results
 
 
+# def tf_IDF(cleaned_texts, parameters):
+#     with warnings.catch_warnings():
+#         warnings.filterwarnings(
+#             "ignore",
+#             message="The parameter 'token_pattern' will not be used since 'tokenizer' is not None'",
+#         )
+        
+#         if printss: 
+#             print("grab me")
+#         # ngram range options
+#         ngram_options = [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3), (1, 4), (2, 4), (3, 4), (4, 4)]
+#         ngram_range = ngram_options[parameters["ngram_range_index"]]
+#         if printss:
+#             print("vectorizer go")
+#         # Create the TfidfVectorizer with a custom tokenizer, analyzer, and the new parameters
+#         vectorizer = TfidfVectorizer(
+#             tokenizer=lambda text: text.split(),
+#             analyzer="word",
+#             max_df=parameters["max_df"],
+#             # min_df=parameters["min_df"],
+#             ngram_range=ngram_range,
+#             max_features=parameters["max_features"],
+#         )
+
+#         # Calculate the TF-IDF matrix
+#         tfidf_matrix = vectorizer.fit_transform(cleaned_texts)
+
+#         # Get the feature names (words)
+#         feature_names = vectorizer.get_feature_names_out()
+#     if printss:
+#         print("grab min keywords")
+#     # min_keywords = parameters["min_keywords"]
+#     # max_keywords = parameters["max_keywords"]
+
+#     keywords = []
+
+#     for index, text in enumerate(cleaned_texts):
+#         # Number of top keywords to extract from each text
+#         num_keywords = int(parameters["num_keywords_multiplier"])
+#         if num_keywords == 0:
+#             num_keywords = 1
+
+#         if printss:
+#             print("grabbed num keywords")
+
+#         # Clip the value to the defined boundaries
+#         # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
+
+#         # Get the indices of the top num_keywords features in the text
+#         top_feature_indices = (
+#             tfidf_matrix[index].toarray()[0].argsort()[-num_keywords:][::-1]
+#         )
+
+#         # Get the top keywords and their corresponding TF-IDF scores
+#         top_keywords_and_scores = [
+#             (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
+#         ]
+
+#         # top_keywords_and_scores = [
+#         #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
+#         # ]
+
+#         original_case_keywords = []
+#         for keyword, score in top_keywords_and_scores:
+#             # Escape any special characters in the keyword for regex search
+#             escaped_keyword = re.escape(keyword)
+#             # Search for the keyword in the message, case insensitive
+#             if match := re.search(
+#                 escaped_keyword, cleaned_texts[index], flags=re.IGNORECASE
+#             ):
+#                 # Append the matched original keyword to the list
+#                 original_case_keywords.append(match.group())
+#         original_case_keywords = [
+#             (keyword.replace(",", " ").strip(), score)
+#             for keyword, score in top_keywords_and_scores
+#         ]
+
+#         keywords.append(original_case_keywords)
+#     # print("tfidf keywords: ", keywords)
+#     return keywords
+
+
 def tf_IDF(cleaned_texts, parameters):
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
             message="The parameter 'token_pattern' will not be used since 'tokenizer' is not None'",
         )
-        
-        if printss: 
-            print("grab me")
+
         # ngram range options
         ngram_options = [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3), (1, 4), (2, 4), (3, 4), (4, 4)]
         ngram_range = ngram_options[parameters["ngram_range_index"]]
-        if printss:
-            print("vectorizer go")
+
         # Create the TfidfVectorizer with a custom tokenizer, analyzer, and the new parameters
         vectorizer = TfidfVectorizer(
             tokenizer=lambda text: text.split(),
             analyzer="word",
-            #max_df=parameters["max_df"],
-            #min_df=parameters["min_df"],
-            #ngram_range=ngram_range,
-            #max_features=parameters["max_features"],
+            max_df=parameters["max_df"],
+            # min_df=parameters["min_df"],
+            ngram_range=ngram_range,
+            max_features=parameters["max_features"],
         )
 
         # Calculate the TF-IDF matrix
@@ -129,23 +208,18 @@ def tf_IDF(cleaned_texts, parameters):
 
         # Get the feature names (words)
         feature_names = vectorizer.get_feature_names_out()
-    if printss:
-        print("grab min keywords")
     # min_keywords = parameters["min_keywords"]
     # max_keywords = parameters["max_keywords"]
 
     keywords = []
 
     for index, text in enumerate(cleaned_texts):
-        # Number of top keywords to extract from each text
-        num_keywords = int(len(text) * 1.8) # * parameters["num_keywords_multiplier"])
+        # # Number of top keywords to extract from each text
+        num_keywords = int(len(text) * parameters["num_keywords_multiplier"])
         if num_keywords == 0:
             num_keywords = 1
 
-        if printss:
-            print("grabbed num keywords")
-
-        # Clip the value to the defined boundaries
+        # # Clip the value to the defined boundaries
         # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
         # Get the indices of the top num_keywords features in the text
@@ -157,7 +231,6 @@ def tf_IDF(cleaned_texts, parameters):
         top_keywords_and_scores = [
             (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
         ]
-
         # top_keywords_and_scores = [
         #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
         # ]
@@ -178,7 +251,6 @@ def tf_IDF(cleaned_texts, parameters):
         ]
 
         keywords.append(original_case_keywords)
-    print("tfidf keywords: ", keywords)
     return keywords
 
 
@@ -254,10 +326,10 @@ def NMF_topic_modeling(cleaned_texts, parameters):
         # consider using multiplicative update solver vs coordinate descent solver
         n_components=num_topics,
         max_iter=parameters["max_iter"],
-        # tol=parameters["tol"] / 10000,
-        # alpha_W=parameters["alpha_W"],
-        # alpha_H=parameters["alpha_H"],
-        # l1_ratio=parameters["l1_ratio"],
+        tol=parameters["tol"] / 10000,
+        alpha_W=parameters["alpha_W"],
+        alpha_H=parameters["alpha_H"],
+        l1_ratio=parameters["l1_ratio"],
         random_state=42,
     )
 
@@ -624,7 +696,7 @@ def word_frequency(word_list, word_freq_dict):
     return entry_frequencies
 
 
-def preprocess_text(text_list, docs):
+def preprocess_text(docs):
     """
     Preprocess the input texts using spaCy's NLP pipeline, removing stopwords and applying lemmatization.
 
@@ -644,7 +716,7 @@ def preprocess_text(text_list, docs):
     preprocessed_texts = []
 
     # Apply SpaCy NLP pipeline to the texts in a batch
-    docs = nlp_spacy.pipe(text_list)
+    # docs = nlp_spacy.pipe(text_list)
 
     for doc in docs:
         # Remove stopwords and apply lemmatization
@@ -691,7 +763,7 @@ def extract_keywords(cleaned_texts, parameters, nlp_spacy, stopwords):
 
     # remove stopwords and perform lemmatization
     # spacy_docs = nlp_spacy.pipe(cleaned_texts)
-    # cleaned_texts = preprocess_text(cleaned_texts, spacy_docs)
+    cleaned_texts = preprocess_text(spacy_docs)
     if printss:
         print("tfidf")
     tf_IDF_keywords = tf_IDF(cleaned_texts, parameters["tf_IDF"])
@@ -882,7 +954,7 @@ def evaluate_topic_extraction(filtered_messages):
                     message["topic_suggestions"]["chosen_topics"]
                 ):
                     if topic == chosen_topic:
-                        score = 30 - i - j
+                        score = int(100 / (i + j + 1)) #30 - i - j 
                         performance[key] += score
                         # if score < 0:
                         #     print("score < 0: ", score)
