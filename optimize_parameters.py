@@ -27,10 +27,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Set the number of cores to use for multiprocessing
-n_cores = 4
+n_cores = 3
 # cmaes population size, typically n_cores * integer
-popsize = 3
-maxiter = 1
+popsize = n_cores
+maxiter = 300
 # Set the time penalty factor for the objective function
 time_penalty_factor = 0.5
 
