@@ -135,10 +135,10 @@ def tf_IDF(cleaned_texts, parameters):
         vectorizer = TfidfVectorizer(
             tokenizer=lambda text: text.split(),
             analyzer="word",
-            max_df=parameters["max_df"],
+            #max_df=parameters["max_df"],
             #min_df=parameters["min_df"],
-            ngram_range=ngram_range,
-            max_features=parameters["max_features"],
+            #ngram_range=ngram_range,
+            #max_features=parameters["max_features"],
         )
 
         # Calculate the TF-IDF matrix
@@ -148,22 +148,22 @@ def tf_IDF(cleaned_texts, parameters):
         feature_names = vectorizer.get_feature_names_out()
     if printss:
         print("grab min keywords")
-    min_keywords = parameters["min_keywords"]
-    max_keywords = parameters["max_keywords"]
+    # min_keywords = parameters["min_keywords"]
+    # max_keywords = parameters["max_keywords"]
 
     keywords = []
 
     for index, text in enumerate(cleaned_texts):
         # Number of top keywords to extract from each text
-        num_keywords = int(len(text) * parameters["num_keywords_multiplier"])
-        # if num_keywords == 0:
-        #     num_keywords = 1
+        num_keywords = int(len(text) * 1.8) # * parameters["num_keywords_multiplier"])
+        if num_keywords == 0:
+            num_keywords = 1
 
         if printss:
             print("grabbed num keywords")
 
         # Clip the value to the defined boundaries
-        num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
+        # num_keywords = int(max(min_keywords, min(num_keywords, max_keywords)))
 
         # Get the indices of the top num_keywords features in the text
         top_feature_indices = (
@@ -174,6 +174,10 @@ def tf_IDF(cleaned_texts, parameters):
         top_keywords_and_scores = [
             (feature_names[i], tfidf_matrix[index, i]) for i in top_feature_indices
         ]
+
+        # top_keywords_and_scores = [
+        #     (feature_names[i], tfidf_matrix[index, i]) for i in range(tfidf_matrix.shape[1])
+        # ]
 
         original_case_keywords = []
         for keyword, score in top_keywords_and_scores:
@@ -864,6 +868,8 @@ def evaluate_topic_extraction(filtered_messages):
                 continue
             # step through each topic in the list
             for i, topic in enumerate(topics):
+                if isinstance(topic, tuple):
+                    topic = topic[0]
                 # step through each selected topic
                 for j, chosen_topic in enumerate(
                     message["topic_suggestions"]["chosen_topics"]
