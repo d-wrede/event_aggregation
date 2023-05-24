@@ -1,0 +1,26 @@
+,parameter1,parameter2,initial_value,lower_bound,upper_bound,data_type,opt_or_not,description without comma
+0,extract_topic,first_letters,538.35,365.96,577.05, int, const, number of letters to be analyzed for keyword extraction from beginning
+1,keyword_selection_parameters,spacy_keywords_weight,3.44,2.34,6.45, float    , opt, Weight for keywords extracted using Spacy
+2,keyword_selection_parameters,rake_keywords_weight,11.04,7.52,14.62, float    , opt,Weight for keywords extracted using RAKE
+3,keyword_selection_parameters,tf_IDF_keywords_weight,1.12,0.0,14.37, float    ,opt,Weight for keywords extracted using TF-IDF
+4,keyword_selection_parameters,LDA_keywords_weight,8.98,1.66,9.07, float    , opt,Weight for keywords extracted using LDA
+5,keyword_selection_parameters,NMF_keywords_weight,12.91,4.82,17.19, float    , opt,Weight for keywords extracted using NMF
+6,keyword_selection_parameters,frequency_threshold1,0.48,0.33,0.66, float    , const,First frequency threshold for keyword selection
+7,keyword_selection_parameters,frequency_threshold2,1.42,1.24,1.5, float    , opt,Second frequency threshold for keyword selection
+8,keyword_selection_parameters,frequency_weight1,-243.35,-250.0,-212.4, float    ,const, Weight for the first frequency threshold
+9,keyword_selection_parameters,frequency_weight2,-215.96,-307.99,-201.11, float    ,const, Weight for the second frequency threshold
+10,keyword_selection_parameters,digit_weight,-177.63,-178.14,-131.56, float    , const, Weight for keywords containing digits
+11,keyword_selection_parameters,highest_rank,30.3,29.83,35.08, int      , const, Highest rank considered in the keyword selection. Bounds set close due to refactor plans.
+12,keyword_selection_parameters,rank_weight,3.65,2.49,5.0, float    ,const, Weight for the rank of keywords
+13,keyword_selection_parameters,position_weight,276.5,254.78,303.91, float    , const, Weight for the position of keywords in the text
+14,keyword_selection_parameters,position_ratio_weight,1.07,1.0,1.3, float    ,const, Weight for the position ratio of keywords in the text
+15,spacy,LOC,0.65,0.65,0.79, float , opt, Flag to include location entities in Spacy keyword extraction
+16,spacy,ORG,0.55,0.22,0.56, float, opt, Flag to include organization entities in Spacy keyword extraction
+17,spacy,MISC,0.63,0.4,0.64, float, opt, Flag to include miscellaneous entities in Spacy keyword extraction
+18,spacy,batch_size,107.27,100.0,246.12, int, const, number of messages evaluated in one batch
+19,spacy_keywords,batch_size,107.27,100.0,246.12, int, const, number of keywords evaluated in one batch
+20,NMF,max_iter,256.83,204.76,300.0, int,const, Maximum iterations for NMF keyword extraction
+21,NMF,l1_ratio,0.85,0.54,1.0, float    , opt, L1 regularization ratio for NMF keyword extraction. Default = 0.0 with 0 <= l1_ratio <= 1
+22,NMF,tol,0.01,0.0,0.01, float    , opt, Tolerance value for NMF keyword extraction
+23,NMF,alpha_W,0.7,0.28,0.95, float    , const, Alpha value for W matrix in NMF keyword extraction. Default 0
+24,NMF,alpha_H,0.19,0.15,0.47, float    , const, Alpha value for H matrix in NMF keyword extraction. Default same as alpha_W

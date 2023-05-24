@@ -1,0 +1,43 @@
+,parameter1,parameter2,initial_value,lower_bound,upper_bound,data_type,opt_or_not,description without comma
+0,extract_topic,first_letters,538.35,365.96,577.05, int,  opt, number of letters to be analyzed for keyword extraction from beginning
+1,keyword_selection_parameters,spacy_weight,0,0,10, float    , const, Weight for keywords extracted using Spacy
+2,keyword_selection_parameters,rake_weight,0,0,10, float    , const, Weight for keywords extracted using RAKE
+3,keyword_selection_parameters,tf_IDF_weight,2,0.0,10, float    , opt, Weight for keywords extracted using TF-IDF
+4,keyword_selection_parameters,LDA_weight,9.06,0,10, float    ,  opt, Weight for keywords extracted using LDA
+5,keyword_selection_parameters,NMF_weight,10,0,10, float    ,  opt, Weight for keywords extracted using NMF
+1, keyword_selection_parameters, spacy_scoring_weight, 0.0, 0.0, 1.0, float, const, Scoring weight for Spacy keywords
+2, keyword_selection_parameters, rake_scoring_weight, 0.0, 0.0, 1.0, float, const, Scoring weight for RAKE keywords
+3, keyword_selection_parameters, tf_IDF_scoring_weight, 0.5, 0.0, 1.0, float, opt, Scoring weight for TF-IDF keywords
+4, keyword_selection_parameters, LDA_scoring_weight, 0.0, 0.0, 1.0, float,  opt, Scoring weight for LDA keywords
+5, keyword_selection_parameters, NMF_scoring_weight, 0.0, 0.0, 1.0, float,  opt, Scoring weight for NMF keywords
+6,keyword_selection_parameters,frequency_threshold1,0.48,0.33,0.66, float    , opt, First frequency threshold for keyword selection
+7,keyword_selection_parameters,frequency_threshold2,1.27,1.24,1.46, float    , opt, Second frequency threshold for keyword selection
+8,keyword_selection_parameters,frequency_weight1,-243.35,-250.0,-212.4, float    ,opt, Weight for the first frequency threshold
+9,keyword_selection_parameters,frequency_weight2,-215.96,-307.99,-201.11, float    ,opt, Weight for the second frequency threshold
+10,keyword_selection_parameters,digit_weight,-177.63,-178.14,-131.56, float    , const, Weight for keywords containing digits
+11,keyword_selection_parameters,highest_rank,30.3,29.83,35.08, int      , const, Highest rank considered in the keyword selection. Bounds set close due to refactor plans.
+12,keyword_selection_parameters,rank_weight,3.65,2.49,5.0, float    ,const, Weight for the rank of keywords
+13,keyword_selection_parameters,position_weight,276.5,254.78,303.91, float    , const, Weight for the position of keywords in the text
+14,keyword_selection_parameters,position_ratio_weight,1.07,1.0,1.3, float    ,const, Weight for the position ratio of keywords in the text
+15,spacy,LOC,0.72,0.67,0.79, float , const, Flag to include location entities in Spacy keyword extraction
+16,spacy,ORG,0.5,0.31,0.56, float, const, Flag to include organization entities in Spacy keyword extraction
+17,spacy,MISC,0.64,0.5,0.64, float, const, Flag to include miscellaneous entities in Spacy keyword extraction
+18,spacy,batch_size,250.0,100.0,400.0, int, const, number of messages evaluated in one batch
+19,spacy_keywords,batch_size,107.27,100.0,246.12, int, const, number of keywords evaluated in one batch
+20,rake,max_length,3.32,2.22,4.0, int      , const, Maximum length of keywords for RAKE keyword extraction
+21,tf_IDF,min_keywords,5.0,1.0,10.0, int, cont, Minimum number of keywords to be extracted using TF-IDF
+22,tf_IDF,max_keywords,10.0,1.0,20.0, int, const, Maximum number of keywords to be extracted using TF-IDF
+23,tf_IDF,num_keywords_multiplier,3,1,10, int, opt, Multiplier for the number of keywords extracted using TF-IDF
+24,tf_IDF,min_df,1,0,1.0, float, const, Minimum document frequency for TF-IDF keyword extraction
+25,tf_IDF,max_df,82,1,100,int, opt, Maximum document frequency for TF-IDF keyword extraction
+26,tf_IDF,ngram_range_index,0.7,0, 5, int, opt, Minimum number of words in a keyword for TF-IDF keyword extraction
+27,tf_IDF,max_features,58,5.0,100.0, int, opt, Maximum number of features for TF-IDF keyword extraction
+28,LDA,num_topics_multiplier,2,0.12,10, float    , opt, Multiplier for the number of topics in LDA keyword extraction
+29,LDA,passes,15,2.0,15, int      ,  opt, Number of passes in LDA keyword extraction
+30,LDA,num_words,3,1.0,100, int,  opt, number of words per topic
+31,NMF,max_iter,256.83,204.76,300.0, int,  opt, Maximum iterations for NMF keyword extraction
+32,NMF,l1_ratio,0.83,0.63,1.0, float    ,  opt, L1 regularization ratio for NMF keyword extraction. Default = 0.0 with 0 <= l1_ratio <= 1
+33,NMF,tol,0.0,0.0,0.01, float    ,  opt, Tolerance value for NMF keyword extraction
+34,NMF,alpha_W,0.7,0.28,0.95, float    ,  opt, Alpha value for W matrix in NMF keyword extraction. Default 0
+35,NMF,alpha_H,0.19,0.15,0.47, float    ,  opt, Alpha value for H matrix in NMF keyword extraction. Default same as alpha_W
+36,NMF,num_words,10,1.0,100, int,  opt, number of words per topic

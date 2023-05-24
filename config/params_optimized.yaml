@@ -1,0 +1,90 @@
+LDA:
+  num_topics_multiplier: !!python/object/apply:numpy.core.multiarray.scalar
+  - &id001 !!python/object/apply:numpy.dtype
+    args:
+    - f8
+    - false
+    - true
+    state: !!python/tuple
+    - 3
+    - <
+    - null
+    - null
+    - null
+    - -1
+    - -1
+    - 0
+  - !!binary |
+    rvzMJU8RQT8=
+  passes: 15
+NMF:
+  max_iter: 100
+  num_topics_multiplier: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    9zasq3iZ7z8=
+keyword_selection_parameters:
+  LDA_keywords_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    kqjSm+H68z8=
+  NMF_keywords_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    FD6mCSgwI0A=
+  digit_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    SeYzUVqzcsA=
+  frequency_threshold1: 0
+  frequency_threshold2: 1
+  frequency_weight1: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    hnjcqUEyU8A=
+  frequency_weight2: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    Y+1gmW8CY8A=
+  highest_rank: 37
+  position_ratio_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    tPu2+Ar3+z8=
+  position_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    vlEaEIOiWEA=
+  rake_keywords_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    AIKsRSKMIEA=
+  rank_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    h7W6LK9E7T8=
+  spacy_keywords_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    lvbg/ogYEEA=
+  tf_IDF_keywords_weight: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    gzvxUuUNKEA=
+rake:
+  max_length: 3
+spacy:
+  LOC: 1
+  MISC: 1
+  ORG: 1
+  batch_size: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    8DPhYI10IkA=
+tf_IDF:
+  keywords_multiplier: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    VIj2wA8L5T8=
+  max_keywords: 6
+  min_keywords: 4

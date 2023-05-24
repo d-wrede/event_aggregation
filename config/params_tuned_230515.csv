@@ -1,0 +1,19 @@
+index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bound, data_type, opt_or_not, description without comma
+0, extract_topic                ,first_letters,516,500,630, int, opt, number of letters to be analyzed for keyword extraction from beginning
+0, keyword_selection_parameters,spacy_keywords_weight,4.3,0.0,6.57, float    , opt, Weight for keywords extracted using Spacy
+1, keyword_selection_parameters,rake_keywords_weight,2.8,0.0,14.62, float    , opt,Weight for keywords extracted using RAKE
+2, keyword_selection_parameters,tf_IDF_keywords_weight,14.3,0,20.0, float    , opt,Weight for keywords extracted using TF-IDF
+3, keyword_selection_parameters,LDA_keywords_weight,3.8,0,12.6, float    , opt,Weight for keywords extracted using LDA
+4, keyword_selection_parameters,NMF_keywords_weight,13.75,0,17.33, float    , opt,Weight for keywords extracted using NMF
+5, keyword_selection_parameters,frequency_threshold1,0.53,0.3,0.7, float    , opt,First frequency threshold for keyword selection
+6, keyword_selection_parameters,frequency_threshold2,1.37,1.11,1.5, float    , opt,Second frequency threshold for keyword selection
+7, keyword_selection_parameters,frequency_weight1,-225.49,-250.0,-149.87, float    , opt, Weight for the first frequency threshold
+8, keyword_selection_parameters,frequency_weight2,-288.92,-389.4,-201.11, float    , opt, Weight for the second frequency threshold
+9, keyword_selection_parameters,digit_weight,-106.15,-181.81,-70.0, float    , opt, Weight for keywords containing digits
+10, keyword_selection_parameters,highest_rank,39.56,29.27,40.0, int      , opt, Highest rank considered in the keyword selection. Bounds set close due to refactor plans.
+11, keyword_selection_parameters,rank_weight,3.66,2.49,5.0, float    , opt, Weight for the rank of keywords
+12, keyword_selection_parameters,position_weight,266.37,250.0,306.07, float    , opt, Weight for the position of keywords in the text
+13, keyword_selection_parameters,position_ratio_weight,1.19,1.0,1.67, float    , opt, Weight for the position ratio of keywords in the text
+14, spacy                       ,LOC,0.67,0.21,1.0, int      , opt, Flag to include location entities in Spacy keyword extraction
+15, spacy                       ,ORG,0.1,0.0,0.57, int      , opt, Flag to include organization entities in Spacy keyword extraction
+16, spacy                       ,MISC,0.49,0.0,0.91, int      , opt, Flag to include miscellaneous entities in Spacy keyword extraction

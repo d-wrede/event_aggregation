@@ -1,0 +1,47 @@
+index, parameter1                 ,parameter2,initial_value,lower_bound,upper_bound, data_type, description
+0, keyword_selection_parameters,spacy_keywords_weight,1.81,0.0,6.57, float    , Weight for keywords extracted using Spacy
+1, keyword_selection_parameters,rake_keywords_weight,6.76,0.0,14.62, float    , Weight for keywords extracted using RAKE
+2, keyword_selection_parameters,tf_IDF_keywords_weight,15.04,8.93,20.0, float    , Weight for keywords extracted using TF-IDF
+3, keyword_selection_parameters,LDA_keywords_weight,12.23,6.39,16.0, float    , Weight for keywords extracted using LDA
+4, keyword_selection_parameters,NMF_keywords_weight,13.75,10.0,17.33, float    , Weight for keywords extracted using NMF
+5, keyword_selection_parameters,frequency_threshold1,0.53,0.3,0.7, float    , First frequency threshold for keyword selection
+6, keyword_selection_parameters,frequency_threshold2,1.37,1.11,1.5, float    , Second frequency threshold for keyword selection
+7, keyword_selection_parameters,frequency_weight1,-225.49,-250.0,-149.87, float    , Weight for the first frequency threshold
+8, keyword_selection_parameters,frequency_weight2,-288.92,-389.4,-201.11, float    , Weight for the second frequency threshold
+9, keyword_selection_parameters,digit_weight,-106.15,-181.81,-70.0, float    , Weight for keywords containing digits
+10, keyword_selection_parameters,highest_rank,39.56,29.27,40.0, int      , Highest rank considered in the keyword selection. Bounds set close due to refactor plans.
+11, keyword_selection_parameters,rank_weight,3.66,2.49,5.0, float    , Weight for the rank of keywords
+12, keyword_selection_parameters,position_weight,266.37,250.0,306.07, float    , Weight for the position of keywords in the text
+13, keyword_selection_parameters,position_ratio_weight,1.19,1.0,1.67, float    , Weight for the position ratio of keywords in the text
+14, spacy                       ,LOC,0.67,0.21,1.0, int      , Flag to include location entities in Spacy keyword extraction
+15, spacy                       ,ORG,0.1,0.0,0.57, int      , Flag to include organization entities in Spacy keyword extraction
+16, spacy                       ,MISC,0.49,0.0,0.91, int      , Flag to include miscellaneous entities in Spacy keyword extraction
+17, spacy                       ,batch_size,14.0,1.0,69.54, int      , Batch size for Spacy keyword extraction
+18, rake                        ,min_length,1.0,1.0,1.48, int      , Minimum length of keywords for RAKE keyword extraction
+19, rake                        ,max_length,3.29,3.0,4, int      , Maximum length of keywords for RAKE keyword extraction
+20, tf_IDF                      ,min_keywords,4.99,2.88,5.0, int      , Minimum number of keywords for TF-IDF keyword extraction
+21, tf_IDF                      ,max_keywords,4.0,1.61,6.0, int      , Maximum number of keywords for TF-IDF keyword extraction
+22, tf_IDF                      ,num_topics_multiplier,1.41,1.14,1.5, float    , Multiplier for keywords count in TF-IDF keyword extraction
+23, tf_IDF                      ,min_df,0.5,0.0,1.0, float      , Minimum document frequency for TF-IDF keyword extraction
+24, tf_IDF                      ,max_df,0.31,0,1, float    , Maximum document frequency for TF-IDF keyword extraction
+25, tf_IDF                      ,ngram_range1,1,1.0,2.0, int      , Lower bound of n-gram range for TF-IDF keyword extraction
+26, tf_IDF                      ,ngram_range2,2,1.0,2.0, int      , Upper bound of n-gram range for TF-IDF keyword extraction
+27, tf_IDF                      ,max_features,199.13,106.14,200.0, int      , Maximum features considered in TF-IDF keyword extraction
+28, LDA                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in LDA keyword extraction
+29, LDA                         ,passes,2.84,2.0,6.84, int      , Number of passes in LDA keyword extraction
+30, NMF                         ,num_topics_multiplier,0.03,0.0,0.57, float    , Multiplier for the number of topics in NMF keyword extraction
+31, NMF                         ,max_iter,60.64,32.96,93.4, int      , Maximum iterations for NMF keyword extraction
+32, NMF                         ,alpha,0.6,0.28,0.6, float    , Alpha value for NMF keyword extraction
+33, NMF                         ,l1_ratio,0.49,0.19,0.6, float    , L1 regularization ratio for NMF keyword extraction. Default = 0.0 with 0 <= l1_ratio <= 1
+34, NMF                         ,tol,1,0.0,2, float    , Tolerance value for NMF keyword extraction
+35, NMF                         ,alpha_W,0.77,0.6,0.95, float    , Alpha value for W matrix in NMF keyword extraction. Default 0
+36, NMF                         ,alpha_H,0.27,0.1,0.64, float    , Alpha value for H matrix in NMF keyword extraction. Default same as alpha_W
+
+rake: parameters["min_length"],
+tfIDF: parameters["num_keywords"], parameters["min_keywords"], parameters["max_keywords"]
+LDA: add this one parameters['num_words']
+
+nmf: not used: alpha
+    drop: alpha_W=parameters["alpha_W"],
+        alpha_H=parameters["alpha_H"],
+        l1_ratio=parameters["l1_ratio"],
