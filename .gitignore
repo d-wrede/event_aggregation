@@ -3,7 +3,6 @@ config.ini
 *.txt
 decow_wordfreq_cistem.csv
 high_frequency_decow_wordfreq_cistem.csv
-*.csv
 *.pyc
 /old
 .DS_Store
