@@ -7,3 +7,4 @@ high_frequency_decow_wordfreq_cistem.csv
 /old
 .DS_Store
 src/extract_timestamp.py
+/private/
