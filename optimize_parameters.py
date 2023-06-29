@@ -239,7 +239,6 @@ def optimize_parameters(es, opt_vars, const_params, cma_bounds):
         const_params["data_types"],
     )
     # Combine the constant and optimization variable dictionaries
-
     par_dicts = [
         merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts
     ]

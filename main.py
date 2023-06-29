@@ -14,6 +14,8 @@ from src.extract_topic import (
     extract_topic,
     evaluate_topic_extraction,
 )
+from optimize_parameters import load_word_freq_dict
+
 
 
 json_filename = "chosen_topics.json"
@@ -156,4 +158,8 @@ def process_messages(word_freq_dict, parameters, messages):
 
 
 if __name__ == "__main__":
-    process_messages()
+
+    # preloading the word frequency dictionary
+    word_freq_dict = load_word_freq_dict()
+
+    process_messages(word_freq_dict, parameters, messages)
