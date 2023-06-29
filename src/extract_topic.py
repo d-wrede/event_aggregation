@@ -29,7 +29,7 @@ import warnings
 from rake_nltk import Rake
 import pandas as pd
 import nltk
-from src.extract_timestamp import filter_string
+from private.extract_timestamp import filter_string
 
 # printswitch for debugging, due to multiprocessing
 printss = False

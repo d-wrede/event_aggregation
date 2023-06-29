@@ -4,7 +4,7 @@ import json
 # import yaml
 from copy import copy
 #import os
-#from src.extract_timestamp import extract_timestamp, filter_string
+#from private.extract_timestamp import extract_timestamp, filter_string
 # from src.organize_timestamps import (
 #     dateparser_vs_ownparser,
 #     interpret_dates,
