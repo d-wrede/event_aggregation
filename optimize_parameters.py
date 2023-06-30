@@ -14,8 +14,7 @@ import json
 from main import process_messages
 import time
 import multiprocessing as mp
-from multiprocessing import freeze_support
-from multiprocessing import Pool
+from multiprocessing import freeze_support, Pool
 import cProfile
 import pstats
 import warnings

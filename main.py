@@ -3,7 +3,7 @@ import json
 # yaml = YAML(typ='safe')
 # import yaml
 from copy import copy
-#import os
+import time
 #from private.extract_timestamp import extract_timestamp, filter_string
 # from src.organize_timestamps import (
 #     dateparser_vs_ownparser,
@@ -14,11 +14,14 @@ from src.extract_topic import (
     extract_topic,
     evaluate_topic_extraction,
 )
-from optimize_parameters import load_word_freq_dict
 
 
 
+config_path = "config/params_tuned_20230520_2.csv"
 json_filename = "chosen_topics.json"
+
+# Set the time penalty factor for the objective function
+time_penalty_factor = 0
 
 number_of_messages = 600
 first_letters = 500
@@ -157,9 +160,57 @@ def process_messages(word_freq_dict, parameters, messages):
     return performance
 
 
+def load_parameters(config_path):
+    # import here to avoid circular imports
+    from optimize_parameters import read_parameter_file, lists_to_dicts
+    from jsonmerge import merge
+    
+    # Read the parameter file
+    opt_vars, const_params = read_parameter_file(config_path)
+
+    # Turn optimization variable lists into parameter dictionaries lists
+    opt_var_dicts = lists_to_dicts(
+        opt_vars["initial_values"], opt_vars["param_keys"], opt_vars["data_types"]
+    )
+    # Turn constant parameter lists into parameter dictionaries lists
+    const_par_dict = lists_to_dicts(
+        [const_params["param_values"]],
+        const_params["param_keys"],
+        const_params["data_types"],
+    )
+    # Combine the constant and optimization variable dictionaries
+    par_dicts = [
+        merge(opt_var_dict, const_par_dict[0]) for opt_var_dict in opt_var_dicts
+    ][0]
+
+    return par_dicts
+
 if __name__ == "__main__":
+    # import here to avoid circular imports
+    from optimize_parameters import load_word_freq_dict
 
     # preloading the word frequency dictionary
     word_freq_dict = load_word_freq_dict()
 
-    process_messages(word_freq_dict, parameters, messages)
+    parameters = load_parameters(config_path)
+
+    # load messages from json file
+    json_filename = "chosen_topics.json"
+    with open(json_filename, "r", encoding="utf-8") as f:
+        messages = json.load(f)
+    
+    """Run the process_messages function with the given parameters"""
+    start_time = time.time()
+
+    # Call the process_messages function
+    performance = process_messages(word_freq_dict, parameters, messages)
+    end_time = time.time()
+    print("performance: ", performance)
+    print("elapsed time: ", "{:.1f}".format(end_time - start_time), " seconds")
+
+    perf_score = (
+        performance["common_topics"] - (end_time - start_time) * time_penalty_factor
+    )
+    # print with zero decimals
+    print("perf_score: ", int(perf_score))
+    # print("perf_score: ", perf_score)
