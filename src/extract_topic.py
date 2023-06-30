@@ -1,5 +1,6 @@
 # from sentence_transformers import SentenceTransformer
 # from sklearn.cluster import KMeans
+import os
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
 
@@ -524,7 +525,7 @@ def find_common_topics(keyword_dicts, text, parameters, word_freq_dict):
     sorted_terms = sorted(term_count.items(), key=lambda x: x[1], reverse=True)
 
     # Create a list of the most common terms, using the longest form of the term
-    # TODO: Consider if it makes sense using the longest terms
+    # TODO: Consider if it actually makes sense using the longest terms
     most_common_terms = []
     for term, keyword_score in sorted_terms:
         if term in longest_terms:
@@ -599,7 +600,8 @@ def check_if_topic(filtered_messages):
 
 def filter_keywords(keywords, nlp_spacy, parameters):
     """
-    Filters the given list of keywords based on specified conditions.
+    Filters the keywords in the given list based on the conditions defined in
+    the function is_valid_keyword(.) (stopwords, digits).
 
     Args:
         keywords (list): A list of keywords to be filtered.
@@ -915,9 +917,23 @@ def evaluate_topic_extraction(filtered_messages):
         "NMF": 0,
         "common_topics": 0,
     }
+
+    performance_temp = {
+        "spacy_NER": 0,
+        "rake_keywords": 0,
+        "tf_IDF": 0,
+        "LDA": 0,
+        "NMF": 0,
+        "common_topics": 0,
+    }
+
     # load the evaluated messages
     # with open("topics.json", "r", encoding="utf-8") as f:
     #     evaluated_messages = json.load(f)
+
+    file_keyword_overview = "keyword_extraction_overview.txt"
+    with open(file_keyword_overview, 'w', encoding="utf-8") as f:
+        print("keyword extraction overview\n", file=f)
 
     # step through each message and find the score
     for message in filtered_messages:
@@ -932,13 +948,7 @@ def evaluate_topic_extraction(filtered_messages):
         # if not found_message:
         #     print("message not found: ", message["id"])
         #     continue
-        # print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"])
-        #print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"])
-        # print("LDA: ", message["topic_suggestions"]["LDA"])
-        # print("NMF: ", message["topic_suggestions"]["NMF"])
-        # print("chosen_topics: ", message["topic_suggestions"]["chosen_topics"])
-        # print()
-
+        
         # compare the common topics in 'topics' with the common topics in 'message'
         # step through each list in the dictionary
         for key, topics in message["topic_suggestions"].items():
@@ -955,7 +965,27 @@ def evaluate_topic_extraction(filtered_messages):
                 ):
                     if topic == chosen_topic:
                         score = int(100 / (i + j + 1)) #30 - i - j 
-                        performance[key] += score
+                        performance_temp[key] = score
                         # if score < 0:
                         #     print("score < 0: ", score)
+        
+        if os.getenv("CALLED_FROM_MAIN"):
+            with open(file_keyword_overview, 'a', encoding="utf-8") as f:
+                n_keywords = 10
+                print("spacy_NER: ", message["topic_suggestions"]["spacy_NER"][:n_keywords], file=f)
+                print("rake_keywords: ", message["topic_suggestions"]["rake_keywords"][:n_keywords], file=f)
+                print("tf_IDF: ", message["topic_suggestions"]["tf_IDF"][:n_keywords], file=f)
+                print("LDA: ", message["topic_suggestions"]["LDA"][:n_keywords], file=f)
+                print("NMF: ", message["topic_suggestions"]["NMF"][:n_keywords], file=f)
+                print("chosen_topics: ", message["topic_suggestions"]["chosen_topics"], file=f)
+                print("common_topics: ", message["topic_suggestions"]["common_topics"], file=f)
+                for key, score in performance_temp.items():
+                    print(key, ": ", score, file=f)
+                print("", file=f)
+
+
+        # update performance dictionary with performance_temp
+        for key, score in performance_temp.items():
+            performance[key] += score
+
     return performance

@@ -1,4 +1,5 @@
 import json
+import os
 # from ruamel.yaml import YAML
 # yaml = YAML(typ='safe')
 # import yaml
@@ -188,6 +189,8 @@ def load_parameters(config_path):
 if __name__ == "__main__":
     # import here to avoid circular imports
     from optimize_parameters import load_word_freq_dict
+    
+    os.environ["CALLED_FROM_MAIN"] = "True"
 
     # preloading the word frequency dictionary
     word_freq_dict = load_word_freq_dict()
